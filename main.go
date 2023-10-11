@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
+	"bufio"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
@@ -14,6 +16,38 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 )
+
+
+func streamMP3(path string) (io.Reader, error) {
+    f, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    return f, nil
+}
+
+func streamMP3Handler(c echo.Context) error {
+    path := c.QueryParam("path")
+    if path == "" {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "path parameter is required"})
+    }
+
+    reader, err := streamMP3(path)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error streaming mp3: %v", err)})
+    }
+
+    // Create a buffered reader with a buffer size of 4096 bytes.
+    bufferedReader := bufio.NewReaderSize(reader, 4096)
+
+    c.Response().Header().Set("Content-Type", "audio/mpeg")
+    _, err = io.CopyBuffer(c.Response(), bufferedReader, nil)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 
 func defaultPublicDir() string {
 	if strings.HasPrefix(os.Args[0], os.TempDir()) {
@@ -65,6 +99,13 @@ func main() {
 			// 	apis.RequireAdminOrUserAuth(),
 			// },
 		})
+
+
+		    e.Router.AddRoute(echo.Route{
+        		Method: http.MethodGet,
+        		Path:  "/stream_mp3",
+        		Handler: streamMP3Handler,
+    		})
 
 		return nil
 	})
