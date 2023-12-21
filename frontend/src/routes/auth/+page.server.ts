@@ -1,8 +1,11 @@
 import { redirect, type Actions, fail } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { HttpStatusCode } from '$lib/statusCodes';
+import { pb } from '$lib/pocketbase';
+
 export const load = (async ({ locals }) => {
 	// if user is logged in, send them back to home
-	if (locals.pb.authStore.isValid) throw redirect(301, '/');
+	if (locals.pb.authStore.isValid) throw redirect(HttpStatusCode.SEE_OTHER, '/');
 	//  return { user: structuredClone(locals.pb.authStore.model) };
 }) satisfies PageServerLoad;
 
@@ -19,7 +22,7 @@ const makeErrObj = (message = '', code: FormFieldKey | 'unknown' = 'unknown'): F
 	message
 });
 
-export const actions = {
+export const actions: Actions = {
 	login: async ({ locals, request }) => {
 		const formData = await request.formData();
 		const emailOrUsername = formData.get(FormFieldKey.EmailOrUsername)?.toString();
@@ -42,8 +45,8 @@ export const actions = {
 			// 	.collection('users')
 			// 	.authWithPassword(emailOrUsername.toLowerCase(), password);
             console.log("Logging in")
-            const { token, record } = await locals.pb
-            .admins
+            const { token, record } = await pb
+            .collection('users')
             .authWithPassword(emailOrUsername.toLowerCase(), password);
             console.log("Done", token)
 			// return { success: true };
@@ -54,6 +57,6 @@ export const actions = {
 				error: makeErrObj('Incorrect credentials!', 'unknown')
 			});
 		}
-		throw redirect(301, '/');
+		throw redirect(HttpStatusCode.SEE_OTHER, '/');
 	}
 } satisfies Actions;

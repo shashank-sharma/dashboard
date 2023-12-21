@@ -21,7 +21,9 @@
   },
   "type": "module",
   "dependencies": {
+    "chart.js": "^4.4.1",
     "pocketbase": "^0.18.0",
-    "svelte-aplayer": "^0.1.2"
+    "svelte-aplayer": "^0.1.2",
+    "svelte-chartjs": "^3.1.2"
   }
 }

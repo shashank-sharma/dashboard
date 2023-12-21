@@ -1,4 +1,11 @@
-export interface ITodo {
-	id: string;
-	title: string;
+export interface ITasks {
+      id: string,
+  collectionId: string,
+  "collectionName": string,
+  "user": string,
+  "title": string,
+  "description": string,
+  "due": string,
+  "image": string,
+  "category": string
 }

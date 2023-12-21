@@ -25,6 +25,7 @@
 		use:enhance={() =>
 			async ({ result }) => {
 				invalidateAll();
+                console.log("Action =", result);
 				await applyAction(result);
 			}}
 	>
