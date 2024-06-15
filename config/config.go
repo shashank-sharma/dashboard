@@ -1,4 +1,4 @@
-package util
+package config
 
 import (
 	"fmt"
@@ -6,24 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/pocketbase/pocketbase"
 )
 
 var app *pocketbase.PocketBase
-
-type Config struct {
-	// PocketBase server URL
-	PocketBaseURL string `envconfig:"POCKETBASE_URL"`
-
-	// PocketBase Admin Key
-	PocketBaseAdminKey string `envconfig:"POCKETBASE_ADMIN_KEY"`
-
-	// PocketBase Database Name
-	PocketBaseDatabaseName string `envconfig:"POCKETBASE_DATABASE_NAME"`
-
-	// Application Port
-	Port int `envconfig:"PORT"`
-}
 
 func defaultPublicDir() string {
 	if strings.HasPrefix(os.Args[0], os.TempDir()) {
@@ -36,7 +23,6 @@ func defaultPublicDir() string {
 
 func Init() {
 	app = pocketbase.New()
-
 	var publicDirFlag string
 
 	// add "--publicDir" option flag
@@ -47,10 +33,12 @@ func Init() {
 		"the directory to serve static files",
 	)
 
-	fmt.Println("Created add: ", app)
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Failed to load environment variables")
+	}
 }
 
 func GetApp() *pocketbase.PocketBase {
-	fmt.Println("Found app: ", app)
 	return app
 }
