@@ -2,9 +2,9 @@ package query
 
 import (
 	"github.com/pocketbase/dbx"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/models"
-	"github.com/shashank-sharma/backend/store"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/store"
 )
 
 func BaseModelQuery[T models.Model](m T) *dbx.SelectQuery {

@@ -7,7 +7,7 @@ declare global {
 
 	interface Locals {
 		pb?: PocketBase;
-		user?: Record<string, T>;
+		user?: Record<string, T> | null | undefined;
 	}
 		// interface PageData {}
 		// interface Platform {}

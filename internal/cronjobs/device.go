@@ -5,7 +5,7 @@ import (
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/shashank-sharma/backend/logger"
+	"github.com/shashank-sharma/backend/internal/logger"
 )
 
 func TrackDevices(app *pocketbase.PocketBase) error {

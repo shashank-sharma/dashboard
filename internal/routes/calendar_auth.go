@@ -10,12 +10,12 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/tools/types"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/models"
-	"github.com/shashank-sharma/backend/query"
-	"github.com/shashank-sharma/backend/services/calendar"
-	"github.com/shashank-sharma/backend/services/oauth"
-	"github.com/shashank-sharma/backend/util"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
+	"github.com/shashank-sharma/backend/internal/services/calendar"
+	"github.com/shashank-sharma/backend/internal/services/oauth"
+	"github.com/shashank-sharma/backend/internal/util"
 )
 
 type CalendarTokenAPI struct {

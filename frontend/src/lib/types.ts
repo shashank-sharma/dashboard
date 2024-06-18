@@ -1,5 +1,5 @@
 export interface ITasks {
-      id: string,
+  id: string,
   collectionId: string,
   "collectionName": string,
   "user": string,

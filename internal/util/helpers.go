@@ -8,7 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	pbModels "github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/shashank-sharma/backend/logger"
+	"github.com/shashank-sharma/backend/internal/logger"
 )
 
 func GenerateRandomId() string {

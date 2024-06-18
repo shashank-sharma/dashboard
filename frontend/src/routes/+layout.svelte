@@ -4,11 +4,6 @@
     import { toast } from "$lib/notification";
     import { Card } from "attractions";
     import Sidebar from "../components/Sidebar.svelte";
-
-    toast("Notification do it");
-    setTimeout(() => {
-        toast("Hello");
-    }, 2000);
 </script>
 
 <Notification />

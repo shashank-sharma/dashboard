@@ -1,11 +1,10 @@
 import { redirect, type Actions, fail } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad } from '../$types';
 import { HttpStatusCode } from '$lib/statusCodes';
-import { pb } from '$lib/pocketbase';
 
 export const load = (async ({ locals }) => {
 	// if user is logged in, send them back to home
-	if (locals.pb.authStore.isValid) throw redirect(HttpStatusCode.SEE_OTHER, '/');
+	if (locals.pb?.authStore.isValid) throw redirect(HttpStatusCode.SEE_OTHER, '/');
 	//  return { user: structuredClone(locals.pb.authStore.model) };
 }) satisfies PageServerLoad;
 
@@ -45,7 +44,7 @@ export const actions: Actions = {
 			// 	.collection('users')
 			// 	.authWithPassword(emailOrUsername.toLowerCase(), password);
             console.log("Logging in")
-            const { token, record } = await pb
+            const { token, record } = await locals.pb
             .collection('users')
             .authWithPassword(emailOrUsername.toLowerCase(), password);
             console.log("Done", token)

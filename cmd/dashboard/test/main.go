@@ -1,12 +1,10 @@
 package main
 
 import (
-	"log"
-
-	"github.com/shashank-sharma/backend/config"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/routes"
-	"github.com/shashank-sharma/backend/store"
+	"github.com/shashank-sharma/backend/internal/config"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/routes"
+	"github.com/shashank-sharma/backend/internal/store"
 
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -20,7 +18,6 @@ func main() {
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		logger.RegisterApp(app)
 		dao := app.Dao()
-		// logger.Debug.Println("Dao is: ", dao)
 		store.InitDao(dao)
 
 		logger.LogError(
@@ -33,8 +30,4 @@ func main() {
 			routes.TestHandler)
 		return nil
 	})
-
-	if err := app.Start(); err != nil {
-		log.Fatal(err)
-	}
 }

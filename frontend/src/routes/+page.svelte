@@ -1,11 +1,17 @@
 <script lang="ts">
 	import type { PageData } from "./$types";
 	import { Button } from "attractions";
-	export let data: PageData;
+	import { currentUser } from "$lib/pocketbase";
+	import { toast } from "$lib/notification";
+	export let data: PageData & { user?: object; isLoggedIn: boolean };
+
+	toast("Data");
 </script>
 
 <h1 class="text-3xl font-bold underline text-red-400">Hello world!</h1>
-<Button>Hello</Button>
+{#if data.user}
+	<Button>Hello {data.user.email}</Button>
+{/if}
 
 {#if data.tasks}
 	<nav class="list-nav card p-4 max-w-[400px] mx-auto space-y-4 my-4">

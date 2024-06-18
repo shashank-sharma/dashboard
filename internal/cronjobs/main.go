@@ -1,9 +1,8 @@
 package cronjobs
 
 import (
-	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/tools/cron"
-	"github.com/shashank-sharma/backend/logger"
+	"github.com/shashank-sharma/backend/internal/logger"
 )
 
 type CronJob struct {
@@ -27,21 +26,5 @@ func Run(cronJobs []CronJob) error {
 			logger.LogInfo("Skipping CRON:", job.Name)
 		}
 	}
-	return nil
-}
-
-func InitCronjobs(app *pocketbase.PocketBase) error {
-	cronJobs := []CronJob{
-		{
-			Name:     "track-device",
-			Interval: "*/6 * * * *",
-			JobFunc: func() {
-				TrackDevices(app)
-			},
-			IsActive: true,
-		},
-	}
-
-	Run(cronJobs)
 	return nil
 }

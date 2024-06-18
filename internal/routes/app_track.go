@@ -2,7 +2,6 @@ package routes
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 	"path/filepath"
 
@@ -13,10 +12,10 @@ import (
 	"github.com/pocketbase/pocketbase/forms"
 	pocketbaseModel "github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/types"
-	"github.com/shashank-sharma/backend/config"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/models"
-	"github.com/shashank-sharma/backend/util"
+	"github.com/shashank-sharma/backend/internal/config"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/util"
 )
 
 type OperationCount struct {
@@ -181,7 +180,7 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 	db, err := sql.Open("sqlite3", filepath.Join(app.DataDir(), "storage", collection.Id, trackUpload.BaseModel.Id, trackUpload.File))
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Error.Println(err)
 	}
 
 	defer db.Close()
@@ -232,7 +231,6 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 		rows, err := db.Query(queryToExecute)
 		if err != nil {
 			logger.Error.Println(err)
-			log.Fatal(err)
 		}
 
 		defer rows.Close()
@@ -243,7 +241,6 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 
 			if err != nil {
 				logger.Error.Println(err)
-				log.Fatal(err)
 			}
 
 			if queryCheckRequired {

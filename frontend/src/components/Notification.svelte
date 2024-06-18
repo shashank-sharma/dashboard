@@ -8,8 +8,13 @@
 
   onMount(() => {
     const unsubscribe = notifications.subscribe((value) => {
-      console.log("Change", value, thisSnack);
-      thisSnack.showSnackbar({ props: { text: value } });
+      console.log("Change", value);
+      if (value) {
+        thisSnack.showSnackbar({
+          props: { text: value },
+          duration: 3000,
+        });
+      }
     });
   });
 </script>

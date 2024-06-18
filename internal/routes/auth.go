@@ -5,9 +5,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
-	"github.com/shashank-sharma/backend/config"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/util"
+	"github.com/shashank-sharma/backend/internal/config"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/util"
 )
 
 func AuthGenerateDevToken(c echo.Context) error {

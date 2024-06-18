@@ -6,9 +6,9 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
-	"github.com/shashank-sharma/backend/config"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/models"
+	"github.com/shashank-sharma/backend/internal/config"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
 )
 
 func TrackDeviceStatus(c echo.Context) error {

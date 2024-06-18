@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/pocketbase/pocketbase/tools/types"
-	"github.com/shashank-sharma/backend/logger"
-	"github.com/shashank-sharma/backend/models"
-	"github.com/shashank-sharma/backend/query"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/googleapi"

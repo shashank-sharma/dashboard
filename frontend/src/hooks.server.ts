@@ -1,28 +1,27 @@
 import { COOKIE_OPTIONS, LOGOUT_PATH } from '$lib/constant';
-import { pb } from '$lib/pocketbase';
+import PocketBase from 'pocketbase';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	// get cookie from user and set cookie to pocketbase
-	pb.authStore.loadFromCookie(event.request.headers.get('cookie') || '');
+	event.locals.pb = new PocketBase('http://127.0.0.1:8090');
+	event.locals.pb.authStore.loadFromCookie(event.request.headers.get('cookie') || '');
 
 	try {
-		// get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-		pb.authStore.isValid && (await pb.collection('users').authRefresh());
+		if (event.locals.pb.authStore.isValid) {
+			await event.locals.pb.collection('users').authRefresh()
+			event.locals.user = structuredClone(event.locals.pb.authStore.model);
+		}
 	} catch (_) {
-		// clear the auth store on failed refresh
-		pb.authStore.clear();
+		event.locals.pb.authStore.clear();
 	}
 
-	event.locals.pb = pb;
-	event.locals.user = structuredClone(pb.authStore.model);
-	// before
 	const response = await resolve(event);
-	// after request send response with cookie to user back
+	
+	const isProd = process.env.IS_PRODUCTION === 'production' ? true : false;
+	response.headers.set(
+		'set-cookie',
+		event.locals.pb.authStore.exportToCookie({ secure: isProd, sameSite: 'Lax' })
+	);
 
-	if (event.url.pathname == LOGOUT_PATH || pb.authStore.isValid) {
-		const newCookie = event.locals.pb.authStore.exportToCookie(COOKIE_OPTIONS);
-		response.headers.append('set-cookie', newCookie); // take out and send cookie back to user
-	}
 	return response;
 };

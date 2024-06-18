@@ -26,12 +26,6 @@
         >
     </div>
     <a href="/settings" class="menu-item">Settings</a>
-    <!-- <h3>{JSON.stringify($currentUser)}</h3>
-    {#if $currentUser}
-        <a href="/logout">{$currentUser.username} Logout</a>
-    {:else}
-        <a href="/login">Login</a>
-    {/if} -->
 </div>
 
 <style>

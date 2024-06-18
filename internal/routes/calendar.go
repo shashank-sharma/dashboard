@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
-	"github.com/shashank-sharma/backend/models"
-	"github.com/shashank-sharma/backend/query"
-	"github.com/shashank-sharma/backend/services/calendar"
-	"github.com/shashank-sharma/backend/util"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
+	"github.com/shashank-sharma/backend/internal/services/calendar"
+	"github.com/shashank-sharma/backend/internal/util"
 )
 
 func CalendarSyncHandler(c echo.Context) error {
