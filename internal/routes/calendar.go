@@ -10,7 +10,7 @@ import (
 	"github.com/shashank-sharma/backend/internal/util"
 )
 
-func CalendarSyncHandler(c echo.Context) error {
+func CalendarSyncHandler(cs *calendar.CalendarService, c echo.Context) error {
 	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
 	userId, _ := util.GetUserId(pbToken)
 	calendarSync, err := query.FindByFilter[*models.CalendarSync](map[string]interface{}{
@@ -22,7 +22,7 @@ func CalendarSyncHandler(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Calendar sync not found"})
 	}
 
-	if err := calendar.SyncEvents(calendarSync); err != nil {
+	if err := cs.SyncEvents(calendarSync); err != nil {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to sync"})
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Sync completed"})

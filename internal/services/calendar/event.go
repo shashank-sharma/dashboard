@@ -2,7 +2,6 @@ package calendar
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"time"
 
@@ -10,31 +9,13 @@ import (
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
-func GetClient(calTokenId string) (*http.Client, error) {
-	googleConfig := LoadCalendarConfig()
-	calendarToken, err := query.FindById[*models.CalendarToken](calTokenId)
-	if err != nil {
-		return nil, err
-	}
-
-	oauthToken := &oauth2.Token{
-		AccessToken:  calendarToken.AccessToken,
-		TokenType:    calendarToken.TokenType,
-		RefreshToken: calendarToken.RefreshToken,
-		Expiry:       calendarToken.Expiry.Time(),
-	}
-
-	return googleConfig.Client(context.Background(), oauthToken), nil
-}
-
-func SyncEvents(calendarSync *models.CalendarSync) error {
-	client, err := GetClient(calendarSync.Token)
+func (cs *CalendarService) SyncEvents(calendarSync *models.CalendarSync) error {
+	client, err := cs.FetchClient(calendarSync.Token)
 	if err != nil {
 		return err
 	}

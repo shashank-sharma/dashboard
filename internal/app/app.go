@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/cmd"
@@ -15,12 +16,16 @@ import (
 	"github.com/shashank-sharma/backend/internal/cronjobs"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/routes"
+	"github.com/shashank-sharma/backend/internal/services/calendar"
+	"github.com/shashank-sharma/backend/internal/services/fold"
 	"github.com/shashank-sharma/backend/internal/store"
 )
 
 type Application struct {
-	Server *http.Server
-	Pb     *pocketbase.PocketBase
+	Server          *http.Server
+	Pb              *pocketbase.PocketBase
+	FoldService     *fold.FoldService
+	CalendarService *calendar.CalendarService
 }
 
 func defaultPublicDir() string {
@@ -47,8 +52,14 @@ func New() *Application {
 		fmt.Println("Failed to load environment variables")
 	}
 
+	// Define all the service here
+	foldService := fold.NewFoldService("https://api.fold.money/api")
+	calendarService := calendar.NewCalendarService()
+
 	app := &Application{
-		Pb: pb,
+		Pb:              pb,
+		FoldService:     foldService,
+		CalendarService: calendarService,
 	}
 
 	pb.OnBeforeServe().Add(func(e *core.ServeEvent) error {
@@ -73,9 +84,24 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	e.Router.GET("/api/testing", routes.TestHandler)
 	e.Router.GET("/stream_mp3", routes.AudioStreamMP3)
 	e.Router.POST("/sync/track-items", routes.TrackAppItems, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.GET("/auth/calendar/redirect", routes.CalendarAuthHandler, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/auth/calendar/callback", routes.CalendarAuthCallback, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/api/calendar/sync", routes.CalendarSyncHandler, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.GET("/auth/calendar/redirect", func(c echo.Context) error {
+		return routes.CalendarAuthHandler(app.CalendarService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.POST("/auth/calendar/callback", func(c echo.Context) error {
+		return routes.CalendarAuthCallback(app.CalendarService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.POST("/api/calendar/sync", func(c echo.Context) error {
+		return routes.CalendarSyncHandler(app.CalendarService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.POST("/api/fold/getotp", func(c echo.Context) error {
+		return routes.FoldGetOtpHandler(app.FoldService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.POST("/api/fold/verifyotp", func(c echo.Context) error {
+		return routes.FoldVerifyOtpHandler(app.FoldService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.GET("/api/fold/refresh", func(c echo.Context) error {
+		return routes.FoldRefreshTokenHandler(app.FoldService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
 }
 
 func (app *Application) InitCronjobs() error {
