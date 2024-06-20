@@ -2,15 +2,10 @@ package routes
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
-	"golang.org/x/oauth2"
-
 	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/tools/types"
-	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
 	"github.com/shashank-sharma/backend/internal/services/calendar"
@@ -23,19 +18,15 @@ type CalendarTokenAPI struct {
 	Provider string `json:"provider"`
 }
 
-func CalendarAuthHandler(c echo.Context) error {
-	googleConfig := calendar.LoadCalendarConfig()
-
-	fmt.Println("GoogleConfig ", googleConfig)
-	authUrl := googleConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("redirect_uri", googleConfig.RedirectURL))
-	return c.JSON(http.StatusOK, map[string]interface{}{"url": authUrl})
+func CalendarAuthHandler(cs *calendar.CalendarService, c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]interface{}{"url": cs.GetAuthUrl()})
 }
 
-func CalendarAuthCallback(c echo.Context) error {
+func CalendarAuthCallback(cs *calendar.CalendarService, c echo.Context) error {
 	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
 	userId, err := util.GetUserId(pbToken)
 
-	googleConfig := calendar.LoadCalendarConfig()
+	googleConfig := cs.GetConfig()
 
 	calTokenData := &CalendarTokenAPI{}
 	if err := c.Bind(calTokenData); err != nil {
@@ -68,18 +59,4 @@ func CalendarAuthCallback(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Error saving record"})
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Authenticated successfully"})
-}
-
-func TestRandomHandler(app *pocketbase.PocketBase, c echo.Context) error {
-	logger.Debug.Println("Started track")
-	user, err := query.FindById[*models.Users]("k0jhrgadiakg8xb")
-	if err != nil {
-		logger.Debug.Println("err: ", err)
-	}
-	logger.Debug.Println("user: ", user)
-	logger.Debug.Println("Completed")
-
-	logger.Debug.Println("User found:", user)
-
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": user.Email})
 }
