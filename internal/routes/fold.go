@@ -107,3 +107,20 @@ func FoldRefreshTokenHandler(fs *fold.FoldService, c echo.Context) error {
 	fs.Refresh(foldToken)
 	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
 }
+
+func FoldUserHandler(fs *fold.FoldService, c echo.Context) error {
+	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+	userId, _ := util.GetUserId(pbToken)
+
+	foldToken, err := query.FindByFilter[*models.FoldToken](map[string]interface{}{
+		"user": userId,
+	})
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to refresh"})
+	}
+
+	fs.Refresh(foldToken)
+	fs.User(foldToken)
+	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
+}

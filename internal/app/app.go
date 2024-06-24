@@ -13,6 +13,7 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/cmd"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/shashank-sharma/backend/internal/cronjobs"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/routes"
@@ -102,6 +103,9 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	e.Router.GET("/api/fold/refresh", func(c echo.Context) error {
 		return routes.FoldRefreshTokenHandler(app.FoldService, c)
 	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.GET("/api/fold/user", func(c echo.Context) error {
+		return routes.FoldUserHandler(app.FoldService, c)
+	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
 }
 
 func (app *Application) InitCronjobs() error {
@@ -125,6 +129,15 @@ func (app *Application) Start() error {
 	// register system commands
 	app.Pb.RootCmd.AddCommand(cmd.NewAdminCommand(app.Pb))
 	app.Pb.RootCmd.AddCommand(cmd.NewServeCommand(app.Pb, true))
+
+	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())
+	logger.Debug.Println("isGoRun:", isGoRun)
+
+	migratecmd.MustRegister(app.Pb, app.Pb.RootCmd, migratecmd.Config{
+		// enable auto creation of migration files when making collection changes in the Admin UI
+		// (the isGoRun check is to enable it only during development)
+		Automigrate: isGoRun,
+	})
 
 	return app.Pb.Execute()
 }
