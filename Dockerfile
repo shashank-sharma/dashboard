@@ -2,7 +2,7 @@
 FROM golang:1.21-alpine as gogcc
 
 ENV GOOS=linux
-ENV GOARCH=amd64
+ENV GOARCH=arm64
 ENV CGO_ENABLED=0
 
 RUN apk update && apk add --no-cache \
@@ -26,7 +26,7 @@ COPY . .
 RUN go build -ldflags="-s -w" -o bin -v ./cmd/dashboard/main.go
 
 # Serve the binary with pb_public
-FROM alpine:latest as bin
+FROM --platform=linux/arm64 alpine:latest as bin
 
 RUN apk update && apk add --no-cache \
         gcc \
