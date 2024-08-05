@@ -2,7 +2,7 @@ version: "3.7"
 services:
   pocketbase:
     build: .
-    container_name: pocketbase
+    container_name: pocketbase-backend
     restart: unless-stopped
     ports:
       - "${HOST_PORT}:8090"
@@ -15,6 +15,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      pocketbase-network: null
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.gzip.compress=true
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.routers.http-0-pocketbase-backend.entryPoints=http
+      - traefik.http.routers.http-0-pocketbase-backend.middlewares=redirect-to-https
+      - 'traefik.http.routers.http-0-pocketbase-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)'
+      - traefik.http.routers.http-0-pocketbase-backend.service=http-0-pocketbase-backend
+      - traefik.http.routers.https-0-pocketbase-backend.entryPoints=https
+      - traefik.http.routers.https-0-pocketbase-backend.middlewares=gzip
+      - 'traefik.http.routers.https-0-pocketbase-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)'
+      - traefik.http.routers.https-0-pocketbase-backend.service=https-0-pocketbase-backend
+      - traefik.http.routers.https-0-pocketbase-backend.tls.certresolver=letsencrypt
+      - traefik.http.routers.https-0-pocketbase-backend.tls=true
+      - traefik.http.services.http-0-pocketbase-backend.loadbalancer.server.port=${HOST_PORT}
+      - traefik.http.services.https-0-pocketbase-backend.loadbalancer.server.port=${HOST_PORT}
+    environment:
+      COOLIFY_CONTAINER_NAME: pocketbase-backend
+networks:
+  pocketbase-network:
+    name: pocketbase-network
+    external: true
 
 volumes:
   store:
