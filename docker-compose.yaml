@@ -5,11 +5,11 @@ services:
     container_name: pocketbase
     restart: unless-stopped
     ports:
-      - "8091:8090"
+      - "${HOST_PORT}:8090"
     volumes:
-      - ./pb_data:/pb_data
-      - ./pb_public:/pb_public
-      - ./migrations:/migrations
+      - "${DATA_VOLUME}:/pb_data"
+      - "${PUBLIC_VOLUME}:/pb_public"
+      - "${MIGRATIONS_VOLUME}:/migrations"
     networks:
       - pocketbase-net
     healthcheck:
