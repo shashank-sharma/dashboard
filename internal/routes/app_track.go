@@ -15,6 +15,7 @@ import (
 	"github.com/shashank-sharma/backend/internal/config"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
 	"github.com/shashank-sharma/backend/internal/util"
 )
 
@@ -25,7 +26,6 @@ type OperationCount struct {
 }
 
 func TrackCreateAppItems(c echo.Context) error {
-	app := config.GetApp()
 	logger.Debug.Println("Started track create")
 	token := c.Request().Header.Get(echo.HeaderAuthorization)
 	logger.Debug.Println("token =", token)
@@ -40,48 +40,38 @@ func TrackCreateAppItems(c echo.Context) error {
 		logger.Error.Println("Error in parsing =", err)
 		return apis.NewBadRequestError("Failed to read request data", err)
 	}
-	record, _ := app.Dao().FindFirstRecordByFilter(
-		"devices", "user = {:user} && name = {:name} && hostname = {:hostname} && os = {:os} && arch = {:arch}",
-		dbx.Params{"user": userId},
-		dbx.Params{"name": data.Name},
-		dbx.Params{"hostname": data.HostName},
-		dbx.Params{"os": data.Os},
-		dbx.Params{"arch": data.Arch},
-	)
+
+	record, err := query.FindByFilter[*models.TrackDevice](map[string]interface{}{
+		"user":     userId,
+		"name":     data.Name,
+		"hostname": data.HostName,
+		"os":       data.Os,
+		"arch":     data.Arch,
+	})
 
 	if record != nil {
-		logger.Debug.Println("returning id:", record.Get("id"))
-		return c.JSON(http.StatusOK, map[string]interface{}{"id": record.Get("id")})
+		logger.Debug.Println("returning id:", record.Id)
+		return c.JSON(http.StatusOK, map[string]interface{}{"id": record.Id})
 	} else {
-		collection, err := app.Dao().FindCollectionByNameOrId("devices")
-		if err != nil {
-			return err
+		trackDevice := &models.TrackDevice{
+			User:     userId,
+			Name:     data.Name,
+			HostName: data.HostName,
+			Os:       data.Os,
+			Arch:     data.Arch,
+			IsActive: true,
+			IsOnline: true,
 		}
 
-		record := pocketbaseModel.NewRecord(collection)
+		trackDevice.Id = util.GenerateRandomId()
 
-		form := forms.NewRecordUpsert(app, record)
-		formId := util.GenerateRandomId()
-		form.LoadData(map[string]any{
-			"id":        formId,
-			"user":      userId,
-			"name":      data.Name,
-			"hostname":  data.HostName,
-			"os":        data.Os,
-			"arch":      data.Arch,
-			"is_active": true,
-			"is_online": true,
-		})
-
-		form.Validate()
-		form.LoadRequest(c.Request(), "")
-		if err := form.Submit(); err != nil {
+		if err := query.SaveRecord(trackDevice); err != nil {
 			logger.Error.Println("Error saving file", err)
 			return err
 		}
 
-		logger.Debug.Println("returning formdata id:", formId)
-		return c.JSON(http.StatusOK, map[string]interface{}{"id": formId})
+		logger.Debug.Println("Track device ID: ", trackDevice.Id)
+		return c.JSON(http.StatusOK, map[string]interface{}{"id": trackDevice.Id})
 	}
 
 }

@@ -27,15 +27,13 @@ type TrackDeviceUpdateAPI struct {
 type TrackDevice struct {
 	models.BaseModel
 
-	User      string         `db:"user" json:"user"`
-	Name      string         `db:"name" json:"name"`
-	HostName  string         `db:"hostname" json:"hostname"`
-	Os        string         `db:"os" json:"os"`
-	Arch      string         `db:"arch" json:"arch"`
-	IsOnline  bool           `db:"is_online" json:"is_online"`
-	IsActive  bool           `db:"is_active" json:"is_active"`
-	BeginDate types.DateTime `db:"begin_date" json:"begin_date"`
-	EndDate   types.DateTime `db:"end_date" json:"end_date"`
+	User     string `db:"user" json:"user"`
+	Name     string `db:"name" json:"name"`
+	HostName string `db:"hostname" json:"hostname"`
+	Os       string `db:"os" json:"os"`
+	Arch     string `db:"arch" json:"arch"`
+	IsOnline bool   `db:"is_online" json:"is_online"`
+	IsActive bool   `db:"is_active" json:"is_active"`
 }
 
 type TrackItems struct {
