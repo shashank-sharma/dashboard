@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
@@ -11,6 +12,7 @@ import (
 	"github.com/pocketbase/pocketbase/daos"
 	"github.com/pocketbase/pocketbase/forms"
 	pocketbaseModel "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/config"
 	"github.com/shashank-sharma/backend/internal/logger"
@@ -19,10 +21,35 @@ import (
 	"github.com/shashank-sharma/backend/internal/util"
 )
 
+type AWEvent struct {
+	Id        int64          `json:"id"`
+	Timestamp types.DateTime `json:"timestamp"`
+	Duration  float64        `json:"duration"`
+	Data      AWEventData    `json:"data"`
+}
+
+type AWEventData struct {
+	Title string `json:"title"`
+	App   string `json:"app"`
+}
+
+type EventListAPI struct {
+	DeviceId string    `json:"device_id"`
+	TaskName string    `json:"task_name"`
+	Events   []AWEvent `json:"events"`
+}
+
 type OperationCount struct {
 	CreateCount int64 `json:"create_count"`
+	FailedCount int64 `json:"failed_count"`
 	SkipCount   int64 `json:"skip_count"`
 	ForceCheck  bool  `json:"force_check"`
+}
+
+type TrackUploadAPI struct {
+	Source     string           `json:"source" form:"source"`
+	ForceCheck bool             `json:"force_check" form:"force_check"`
+	File       *filesystem.File `json:"file" form:"file"`
 }
 
 func TrackCreateAppItems(c echo.Context) error {
@@ -76,6 +103,61 @@ func TrackCreateAppItems(c echo.Context) error {
 
 }
 
+func TrackAppSyncItems(c echo.Context) error {
+	token := c.Request().Header.Get("AuthSyncToken")
+	if token == "" {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
+	}
+	logger.Debug.Println("token =", token)
+	userId, err := util.ValidateDevToken(token)
+	if err != nil {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
+	}
+
+	logger.Debug.Println("Valid:", userId)
+	data := EventListAPI{}
+	if err := c.Bind(&data); err != nil {
+		logger.Error.Println("Error in parsing =", err)
+		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
+	}
+
+	logger.Debug.Println("data found:", data)
+
+	op := OperationCount{}
+	// TODO: Handle failure better
+	for _, event := range data.Events {
+		endDate := types.DateTime{}
+		endDate.Scan(event.Timestamp.Time().Add(time.Second * time.Duration(event.Duration)))
+		err := query.SaveRecord(&models.TrackItems{
+			User:      userId,
+			Device:    data.DeviceId,
+			TrackId:   event.Id,
+			App:       event.Data.App,
+			TaskName:  data.TaskName,
+			Title:     event.Data.Title,
+			BeginDate: event.Timestamp,
+			EndDate:   endDate,
+		})
+		op.CreateCount += 1
+		if err != nil {
+			op.FailedCount += 1
+			logger.Error.Println("Failed saving record for event:", event)
+		}
+	}
+
+	if err = query.UpdateRecord[*models.TrackDevice](data.DeviceId, map[string]interface{}{
+		"is_online":   true,
+		"is_active":   true,
+		"sync_events": true,
+		"last_online": types.NowDateTime(),
+		"last_sync":   types.NowDateTime(),
+	}); err != nil {
+		logger.Error.Println("Failed updating the tracking device records")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"message": op})
+}
+
 func TrackAppItems(c echo.Context) error {
 	app := config.GetApp()
 	token := c.Request().Header.Get(echo.HeaderAuthorization)
@@ -84,7 +166,7 @@ func TrackAppItems(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
-	data := &models.TrackUploadAPI{}
+	data := TrackUploadAPI{}
 
 	if err := c.Bind(data); err != nil || data.Source == "" {
 		logger.Error.Println("Error in parsing =", err)
@@ -226,7 +308,8 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 		defer rows.Close()
 
 		for rows.Next() {
-			trackItems := &models.TrackItems{User: trackUpload.User, Source: trackUpload.Source}
+			// TODO: Alternative of source solution here
+			trackItems := &models.TrackItems{User: trackUpload.User}
 			err = rows.Scan(&trackItems.TrackId, &trackItems.App, &trackItems.TaskName, &trackItems.Title, &trackItems.BeginDate, &trackItems.EndDate)
 
 			if err != nil {
@@ -238,7 +321,6 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 					"track_items", "user = {:user} && task_name = {:task_name} && source = {:source} && begin_date = {:begin_date} && end_date = {:end_date}",
 					dbx.Params{"user": trackUpload.User,
 						"task_name":  trackItems.TaskName,
-						"source":     trackItems.Source,
 						"begin_date": trackItems.BeginDate,
 						"end_date":   trackItems.EndDate})
 

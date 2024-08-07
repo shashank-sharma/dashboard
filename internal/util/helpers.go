@@ -9,6 +9,8 @@ import (
 	pbModels "github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
 )
 
 func GenerateRandomId() string {
@@ -38,4 +40,16 @@ func GetUserId(tokenString string) (string, error) {
 	logger.Debug.Println("User ID:", claims["id"])
 	logger.Debug.Println("Username:", claims["username"])
 	return claims["id"].(string), nil
+}
+
+func ValidateDevToken(tokenString string) (string, error) {
+	parts := strings.Split(tokenString, ".")
+	_, err := query.FindByFilter[*models.DevToken](map[string]interface{}{
+		"user":  parts[0],
+		"token": parts[1],
+	})
+	if err != nil {
+		return "", err
+	}
+	return parts[0], nil
 }

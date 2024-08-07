@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
@@ -27,13 +26,16 @@ type TrackDeviceUpdateAPI struct {
 type TrackDevice struct {
 	models.BaseModel
 
-	User     string `db:"user" json:"user"`
-	Name     string `db:"name" json:"name"`
-	HostName string `db:"hostname" json:"hostname"`
-	Os       string `db:"os" json:"os"`
-	Arch     string `db:"arch" json:"arch"`
-	IsOnline bool   `db:"is_online" json:"is_online"`
-	IsActive bool   `db:"is_active" json:"is_active"`
+	User       string         `db:"user" json:"user"`
+	Name       string         `db:"name" json:"name"`
+	HostName   string         `db:"hostname" json:"hostname"`
+	Os         string         `db:"os" json:"os"`
+	Arch       string         `db:"arch" json:"arch"`
+	IsOnline   bool           `db:"is_online" json:"is_online"`
+	IsActive   bool           `db:"is_active" json:"is_active"`
+	SyncEvents bool           `db:"sync_events" json:"sync_events"`
+	LastOnline types.DateTime `db:"last_online" json:"last_online"`
+	LastSync   types.DateTime `db:"last_sync" json:"last_sync"`
 }
 
 type TrackItems struct {
@@ -41,18 +43,12 @@ type TrackItems struct {
 
 	User      string         `db:"user" json:"user"`
 	TrackId   int64          `db:"track_id" json:"track_id"`
-	Source    string         `db:"source" json:"source"`
+	Device    string         `db:"device" json:"device"`
 	App       string         `db:"app" json:"app"`
 	TaskName  string         `db:"task_name" json:"task_name"`
 	Title     string         `db:"title" json:"title"`
 	BeginDate types.DateTime `db:"begin_date" json:"begin_date"`
 	EndDate   types.DateTime `db:"end_date" json:"end_date"`
-}
-
-type TrackUploadAPI struct {
-	Source     string           `json:"source" form:"source"`
-	ForceCheck bool             `json:"force_check" form:"force_check"`
-	File       *filesystem.File `json:"file" form:"file"`
 }
 
 type TrackUpload struct {
