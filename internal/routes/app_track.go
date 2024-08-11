@@ -22,10 +22,10 @@ import (
 )
 
 type AWEvent struct {
-	Id        int64          `json:"id"`
-	Timestamp types.DateTime `json:"timestamp"`
-	Duration  float64        `json:"duration"`
-	Data      AWEventData    `json:"data"`
+	Id        int64       `json:"id"`
+	Timestamp time.Time   `json:"timestamp"`
+	Duration  float64     `json:"duration"`
+	Data      AWEventData `json:"data"`
 }
 
 type AWEventData struct {
@@ -121,27 +121,56 @@ func TrackAppSyncItems(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
 	}
 
-	logger.Debug.Println("data found:", data)
-
 	op := OperationCount{}
 	// TODO: Handle failure better
 	for _, event := range data.Events {
+		startTimestamp := event.Timestamp.Round(time.Second)
+		startDate := types.DateTime{}
 		endDate := types.DateTime{}
-		endDate.Scan(event.Timestamp.Time().Add(time.Second * time.Duration(event.Duration)))
-		err := query.SaveRecord(&models.TrackItems{
+		startDate.Scan(startTimestamp)
+		endDate.Scan(startTimestamp.Add(time.Second * time.Duration(event.Duration)))
+
+		_, err := query.FindByFilter[*models.TrackItems](map[string]interface{}{
+			"user":       userId,
+			"device":     data.DeviceId,
+			"track_id":   event.Id,
+			"app":        event.Data.App,
+			"task_name":  data.TaskName,
+			"title":      event.Data.Title,
+			"begin_date": startDate,
+			"end_date":   endDate,
+		})
+
+		if err == nil {
+			op.SkipCount += 1
+			continue
+		}
+
+		trackData := &models.TrackItems{
 			User:      userId,
 			Device:    data.DeviceId,
 			TrackId:   event.Id,
 			App:       event.Data.App,
 			TaskName:  data.TaskName,
 			Title:     event.Data.Title,
-			BeginDate: event.Timestamp,
+			BeginDate: startDate,
 			EndDate:   endDate,
+		}
+
+		err = query.UpsertRecord[*models.TrackItems](trackData, map[string]interface{}{
+			"user":       userId,
+			"device":     data.DeviceId,
+			"track_id":   event.Id,
+			"app":        event.Data.App,
+			"task_name":  data.TaskName,
+			"title":      event.Data.Title,
+			"begin_date": startDate,
 		})
-		op.CreateCount += 1
 		if err != nil {
 			op.FailedCount += 1
-			logger.Error.Println("Failed saving record for event:", event)
+			logger.Error.Println("Failed updating record for event:", event, err)
+		} else {
+			op.CreateCount += 1
 		}
 	}
 

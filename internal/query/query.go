@@ -57,6 +57,7 @@ func UpsertRecord[T models.Model](model T, filterStruct map[string]interface{}) 
 	record, err := FindByFilter[T](filterStruct)
 	if err == nil {
 		model.SetId(record.GetId())
+		model.MarkAsNotNew()
 	}
 	if err := SaveRecord(model); err != nil {
 		return err
