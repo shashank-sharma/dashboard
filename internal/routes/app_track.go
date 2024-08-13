@@ -52,6 +52,16 @@ type TrackUploadAPI struct {
 	File       *filesystem.File `json:"file" form:"file"`
 }
 
+func GetCurrentApp(c echo.Context) error {
+	data, err := query.FindLatestByColumn[*models.TrackItems]("end_date")
+	if err != nil {
+		logger.Error.Println("Failed getting current app: ", err)
+		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch data"})
+	}
+
+	return c.JSON(http.StatusOK, data)
+}
+
 func TrackCreateAppItems(c echo.Context) error {
 	logger.Debug.Println("Started track create")
 	token := c.Request().Header.Get(echo.HeaderAuthorization)
@@ -108,13 +118,10 @@ func TrackAppSyncItems(c echo.Context) error {
 	if token == "" {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
 	}
-	logger.Debug.Println("token =", token)
 	userId, err := util.ValidateDevToken(token)
 	if err != nil {
 		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
-
-	logger.Debug.Println("Valid:", userId)
 	data := EventListAPI{}
 	if err := c.Bind(&data); err != nil {
 		logger.Error.Println("Error in parsing =", err)
@@ -184,7 +191,7 @@ func TrackAppSyncItems(c echo.Context) error {
 		logger.Error.Println("Failed updating the tracking device records")
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": op})
+	return c.JSON(http.StatusOK, op)
 }
 
 func TrackAppItems(c echo.Context) error {

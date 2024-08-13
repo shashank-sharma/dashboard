@@ -81,3 +81,19 @@ func UpdateRecord[T models.Model](filterId string, updateStruct map[string]inter
 	}
 	return nil
 }
+
+func FindLatestByColumn[T models.Model](date_field string) (T, error) {
+	var m T
+	query := BaseModelQuery(m)
+
+	err := query.
+		OrderBy(date_field + " DESC").
+		Limit(1).
+		One(&m)
+
+	if err != nil {
+		return *new(T), err
+	}
+
+	return m, nil
+}
