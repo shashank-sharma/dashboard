@@ -1,13 +1,18 @@
 # Cache gogcc alpine
-FROM golang:1.21-alpine as gogcc
+FROM --platform=$BUILDPLATFORM golang:1.21-alpine as gogcc
+
+# Accept the target architecture as a build argument
+ARG TARGETARCH
 
 ENV GOOS=linux
-ENV GOARCH=arm64
 ENV CGO_ENABLED=0
 
 RUN apk update && apk add --no-cache \
         gcc \
         musl-dev
+
+# Set the GOARCH environment variable based on the TARGETARCH build argument
+ENV GOARCH=$TARGETARCH
 
 # Build the binary
 FROM gogcc as builder
@@ -26,11 +31,10 @@ COPY . .
 RUN go build -ldflags="-s -w" -o bin -v ./cmd/dashboard/main.go
 
 # Serve the binary with pb_public
-FROM --platform=linux/arm64 alpine:latest as bin
+FROM alpine:latest as bin
 
 RUN apk update && apk add --no-cache \
-        gcc \
-        musl-dev
+        ca-certificates
 
 WORKDIR /app/
 COPY pb_public ./pb_public
