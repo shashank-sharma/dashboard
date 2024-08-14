@@ -7,39 +7,20 @@ services:
     ports:
       - "${HOST_PORT}:8090"
     volumes:
-      - "${DATA_VOLUME}:/pb_data"
-      - "${PUBLIC_VOLUME}:/pb_public"
-      - "${MIGRATIONS_VOLUME}:/migrations"
+      - type: bind
+        source: ${DATA_VOLUME}
+        target: /pb_data
+        is_directory: true
+      - type: bind
+        source: ${PUBLIC_VOLUME}
+        target: /pb_public
+        is_directory: true
+      - type: bind
+        source: ${MIGRATIONS_VOLUME}
+        target: /migrations
+        is_directory: true
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      pocketbase-network: null
-    labels:
-      - traefik.enable=true
-      - traefik.http.middlewares.gzip.compress=true
-      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-      - traefik.http.routers.http-0-pocketbase-backend.entryPoints=http
-      - traefik.http.routers.http-0-pocketbase-backend.middlewares=redirect-to-https
-      - 'traefik.http.routers.http-0-pocketbase-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)'
-      - traefik.http.routers.http-0-pocketbase-backend.service=http-0-pocketbase-backend
-      - traefik.http.routers.https-0-pocketbase-backend.entryPoints=https
-      - traefik.http.routers.https-0-pocketbase-backend.middlewares=gzip
-      - 'traefik.http.routers.https-0-pocketbase-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/`)'
-      - traefik.http.routers.https-0-pocketbase-backend.service=https-0-pocketbase-backend
-      - traefik.http.routers.https-0-pocketbase-backend.tls.certresolver=letsencrypt
-      - traefik.http.routers.https-0-pocketbase-backend.tls=true
-      - traefik.http.services.http-0-pocketbase-backend.loadbalancer.server.port=${HOST_PORT}
-      - traefik.http.services.https-0-pocketbase-backend.loadbalancer.server.port=${HOST_PORT}
-    environment:
-      COOLIFY_CONTAINER_NAME: pocketbase-backend
-networks:
-  pocketbase-network:
-    name: pocketbase-network
-    external: true
-
-volumes:
-  store:
-    driver: local
