@@ -114,7 +114,7 @@ func (app *Application) InitCronjobs() error {
 	cronJobs := []cronjobs.CronJob{
 		{
 			Name:     "track-device",
-			Interval: "*/6 * * * *",
+			Interval: "*/1 * * * *",
 			JobFunc: func() {
 				cronjobs.TrackDevices(app.Pb)
 			},

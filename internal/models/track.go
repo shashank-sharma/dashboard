@@ -33,6 +33,7 @@ type TrackDevice struct {
 	Arch       string         `db:"arch" json:"arch"`
 	IsOnline   bool           `db:"is_online" json:"is_online"`
 	IsActive   bool           `db:"is_active" json:"is_active"`
+	IsPublic   bool           `db:"is_public" json:"is_public"`
 	SyncEvents bool           `db:"sync_events" json:"sync_events"`
 	LastOnline types.DateTime `db:"last_online" json:"last_online"`
 	LastSync   types.DateTime `db:"last_sync" json:"last_sync"`

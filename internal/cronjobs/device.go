@@ -3,30 +3,29 @@ package cronjobs
 import (
 	"time"
 
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/models"
+	"github.com/shashank-sharma/backend/internal/query"
 )
 
 func TrackDevices(app *pocketbase.PocketBase) error {
-	threshold := time.Now().Add(-6 * time.Minute)
-	records, err := app.Dao().FindRecordsByFilter(
-		"devices", "is_online = {:is_online} && is_active = {:is_active} && updated <= {:threshold}",
-		"",
-		100,
-		0,
-		dbx.Params{"is_online": true},
-		dbx.Params{"is_active": true},
-		dbx.Params{"threshold": threshold})
+	activeDevices, err := query.FindAllByFilter[*models.TrackDevice](map[string]interface{}{
+		"is_active": true,
+		"is_online": true,
+		"updated": map[string]interface{}{
+			"lte": time.Now().Add(-6 * time.Minute),
+		},
+	})
 
 	if err != nil {
 		logger.Error.Println("No queries found")
 	}
-	for _, record := range records {
-		record.Set("is_online", false)
-		logger.Debug.Println("Working for record =", record)
-		if err := app.Dao().SaveRecord(record); err != nil {
-			logger.Error.Println("Error saving cron: ", err)
+	for _, activeDevice := range activeDevices {
+		if err = query.UpdateRecord[*models.TrackDevice](activeDevice.Id, map[string]interface{}{
+			"is_online": false,
+		}); err != nil {
+			logger.Error.Println("Failed updating the tracking device records")
 		}
 	}
 	return nil

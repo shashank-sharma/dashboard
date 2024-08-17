@@ -52,14 +52,64 @@ type TrackUploadAPI struct {
 	File       *filesystem.File `json:"file" form:"file"`
 }
 
+type PublicDeviceData struct {
+	Name       string         `json:"name"`
+	Os         string         `json:"os"`
+	IsOnline   bool           `json:"is_online"`
+	IsPublic   bool           `json:"is_public"`
+	LastOnline types.DateTime `json:"last_online"`
+	LastSync   types.DateTime `json:"last_sync"`
+	AppCurrent string         `json:"current_app"`
+	AppEndTime types.DateTime `json:"app_endtime"`
+}
+
+type PublicTrackDeviceAPI struct {
+	TotalDevices int                `json:"total_devices"`
+	Devices      []PublicDeviceData `json:"devices"`
+}
+
 func GetCurrentApp(c echo.Context) error {
-	data, err := query.FindLatestByColumn[*models.TrackItems]("end_date")
+	activeDevices, err := query.FindAllByFilter[*models.TrackDevice](map[string]interface{}{
+		"is_active": true,
+	})
 	if err != nil {
-		logger.Error.Println("Failed getting current app: ", err)
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch data"})
+		logger.Error.Println("Failed getting devices: ", err)
+		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch devices"})
 	}
 
-	return c.JSON(http.StatusOK, data)
+	trackDevicePayload := PublicTrackDeviceAPI{
+		TotalDevices: len(activeDevices),
+		Devices:      []PublicDeviceData{},
+	}
+
+	for _, activeDevice := range activeDevices {
+		publicDeviceData := PublicDeviceData{
+			Name:     activeDevice.Name,
+			Os:       activeDevice.Os,
+			IsPublic: activeDevice.IsPublic,
+		}
+
+		if activeDevice.IsPublic {
+			publicDeviceData.IsOnline = activeDevice.IsActive
+			publicDeviceData.LastOnline = activeDevice.LastOnline
+			publicDeviceData.LastSync = activeDevice.LastSync
+
+			data, err := query.FindLatestByColumn[*models.TrackItems]("end_date", map[string]interface{}{
+				"device": activeDevice.Id,
+			})
+
+			if err != nil {
+				publicDeviceData.AppCurrent = ""
+			} else {
+				publicDeviceData.AppCurrent = data.App
+				publicDeviceData.AppEndTime = data.EndDate
+			}
+		}
+
+		trackDevicePayload.Devices = append(trackDevicePayload.Devices, publicDeviceData)
+	}
+
+	return c.JSON(http.StatusOK, trackDevicePayload)
 }
 
 func TrackCreateAppItems(c echo.Context) error {

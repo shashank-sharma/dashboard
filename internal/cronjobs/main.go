@@ -26,5 +26,7 @@ func Run(cronJobs []CronJob) error {
 			logger.LogInfo("Skipping CRON:", job.Name)
 		}
 	}
+
+	scheduler.Start()
 	return nil
 }

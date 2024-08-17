@@ -82,11 +82,13 @@ func UpdateRecord[T models.Model](filterId string, updateStruct map[string]inter
 	return nil
 }
 
-func FindLatestByColumn[T models.Model](date_field string) (T, error) {
+func FindLatestByColumn[T models.Model](date_field string, filterStruct map[string]interface{}) (T, error) {
 	var m T
 	query := BaseModelQuery(m)
+	filter := structToHashExp(filterStruct)
 
 	err := query.
+		AndWhere(filter).
 		OrderBy(date_field + " DESC").
 		Limit(1).
 		One(&m)
@@ -96,4 +98,38 @@ func FindLatestByColumn[T models.Model](date_field string) (T, error) {
 	}
 
 	return m, nil
+}
+
+func FindAllByFilter[T models.Model](filterStruct map[string]interface{}) ([]T, error) {
+	var results []T
+
+	var m T
+	query := BaseModelQuery(m)
+
+	for field, value := range filterStruct {
+		switch v := value.(type) {
+		case map[string]interface{}:
+			for op, actualVal := range v {
+				if op == "gte" {
+					query = query.AndWhere(dbx.NewExp(field+" >= {:"+field+"}", dbx.Params{field: actualVal}))
+				} else if op == "lte" {
+					query = query.AndWhere(dbx.NewExp(field+" <= {:"+field+"}", dbx.Params{field: actualVal}))
+				}
+			}
+		default:
+			query = query.AndWhere(dbx.HashExp{field: value})
+		}
+	}
+
+	err := query.All(&results)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func BaseQuery[T models.Model]() *dbx.SelectQuery {
+	var m T
+	return BaseModelQuery(m)
 }
