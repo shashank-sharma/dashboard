@@ -90,7 +90,7 @@ func GetCurrentApp(c echo.Context) error {
 		}
 
 		if activeDevice.IsPublic {
-			publicDeviceData.IsOnline = activeDevice.IsActive
+			publicDeviceData.IsOnline = activeDevice.IsOnline
 			publicDeviceData.LastOnline = activeDevice.LastOnline
 			publicDeviceData.LastSync = activeDevice.LastSync
 
