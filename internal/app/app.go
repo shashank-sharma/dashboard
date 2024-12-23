@@ -84,8 +84,7 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/track", routes.TrackDeviceStatus)
 	e.Router.GET("/api/track/getapp", routes.GetCurrentApp)
 	e.Router.POST("/api/sync/create", routes.TrackAppSyncItems)
-	e.Router.GET("/api/testing", routes.TestHandler)
-	e.Router.GET("/stream_mp3", routes.AudioStreamMP3)
+	e.Router.POST("/api/focus/create", routes.TrackFocus)
 	e.Router.POST("/sync/track-items", routes.TrackAppItems, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
 	e.Router.GET("/auth/calendar/redirect", func(c echo.Context) error {
 		return routes.CalendarAuthHandler(app.CalendarService, c)
