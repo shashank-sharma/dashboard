@@ -66,7 +66,7 @@
                     `(title ~ "${searchQuery}" || description ~ "${searchQuery}")`,
                 );
             }
-            // Add user filter
+
             filterConditions.push(`user = "${pb.authStore.model.id}"`);
 
             const filter = filterConditions.join(" && ");
