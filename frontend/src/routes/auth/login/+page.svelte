@@ -1,79 +1,133 @@
 <script lang="ts">
-	import { applyAction, enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
-	import type { ActionData } from './$types';
-	import { REGISTER_PATH } from '$lib/constant';
+	import { currentUser, pb } from "$lib/pocketbase";
+	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardFooter,
+		CardHeader,
+		CardTitle,
+	} from "$lib/components/ui/card";
+	import { Label } from "$lib/components/ui/label";
+	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { Loader2 } from "lucide-svelte";
 
-	export let form: ActionData;
-	$: error = form?.error;
-	$: formatError = (key: string) => (error?.code == key ? error.message : '');
-	$: setErrorClass = (keys: string[]) =>
-		`input  ${error?.code && keys.includes(error.code) ? 'input-error' : ''}`;
+	let username: string = "";
+	let password: string = "";
+	let isLoading: boolean = false;
+	let error: string | null = null;
 
-	let isPasswordVisible = false;
+	async function login() {
+		if (isLoading) return;
+		isLoading = true;
+		error = null;
+		try {
+			await pb.collection("users").authWithPassword(username, password);
+		} catch (err) {
+			console.error(err);
+			error = "Invalid username or password";
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function signUp() {
+		if (isLoading) return;
+		isLoading = true;
+		error = null;
+		try {
+			const data = {
+				username,
+				password,
+				passwordConfirm: password,
+				name: username,
+			};
+			await pb.collection("users").create(data);
+			await login();
+		} catch (err) {
+			console.error(err);
+			error = "Error creating account. Username might be taken.";
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	function signOut() {
+		pb.authStore.clear();
+	}
 </script>
 
-<div class="card p-4 max-w-[400px] mx-auto space-y-4 my-4">
-	<h1 class="h1">SIGN IN</h1>
-
-	{#if error?.code == 'unknown'}<p class="text-error-500">{error.message}</p>{/if}
-
-	<form
-		class="space-y-2"
-		method="POST"
-		action="?/login"
-		use:enhance={() =>
-			async ({ result }) => {
-				invalidateAll();
-                console.log("Action =", result);
-				await applyAction(result);
-			}}
-	>
-		<label class="label">
-			<small>Email or Username</small>
-			<input
-				class={setErrorClass(['email', 'unknown'])}
-				type="text"
-				name="emailOrUsername"
-				placeholder="Email or Username"
-				value={form?.emailOrUsername ?? ''}
-			/>
-			<small class="text-error-500">{formatError('emailOrUsername')}</small>
-		</label>
-		<label class="label">
-			<small>Password</small>
-			<div class="input-group input-group-divider grid-cols-[1fr_auto]">
-				<!-- class={setErrorClass(['password', 'unknown'])} -->
-				<input
-					type={isPasswordVisible ? 'text' : 'password'}
-					name="password"
-					placeholder="Password"
-				/>
-				<button
-					type="button"
-					on:click={() => {
-						isPasswordVisible = !isPasswordVisible;
-					}}
+<div
+	class="flex flex-col items-center justify-center min-h-screen bg-background"
+>
+	{#if $currentUser}
+		<Card class="w-[350px]">
+			<CardHeader>
+				<CardTitle>Welcome, {$currentUser.username}!</CardTitle>
+				<CardDescription>You are currently signed in.</CardDescription>
+			</CardHeader>
+			<CardFooter>
+				<Button on:click={signOut} variant="outline" class="w-full"
+					>Sign Out</Button
 				>
-				</button>
-			</div>
-			<small class="text-error-500">{formatError('password')}</small>
-		</label>
-		<button type="submit" class="btn variant-filled">
-			<small>SUBMIT</small>
-		</button>
-
-		<!-- <label class="label">
-			<span>Username</span>
-			<div class="input-group input-group-divider grid-cols-[1fr_auto]">
-				<input type="text" placeholder="Enter Username..." />
-				<div>
-					<Icon name="eye" width="24px" fill height="24px" />
-				</div>
-			</div>
-		</label> -->
-	</form>
-	<div class="w-full">
-		<small>Not registered? <a href={REGISTER_PATH} class="anchor">Create Account</a></small>
-	</div>
+			</CardFooter>
+		</Card>
+	{:else}
+		<Card class="w-[350px]">
+			<CardHeader>
+				<CardTitle>Welcome</CardTitle>
+				<CardDescription
+					>Sign in to your account or create a new one.</CardDescription
+				>
+			</CardHeader>
+			<CardContent>
+				<form on:submit|preventDefault>
+					<div class="grid w-full items-center gap-4">
+						<div class="flex flex-col space-y-1.5">
+							<Label for="username">Username</Label>
+							<Input
+								id="username"
+								bind:value={username}
+								disabled={isLoading}
+							/>
+						</div>
+						<div class="flex flex-col space-y-1.5">
+							<Label for="password">Password</Label>
+							<Input
+								id="password"
+								type="password"
+								bind:value={password}
+								disabled={isLoading}
+							/>
+						</div>
+					</div>
+				</form>
+				{#if error}
+					<Alert variant="destructive" class="mt-4">
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				{/if}
+			</CardContent>
+			<CardFooter class="flex justify-between">
+				<Button
+					on:click={signUp}
+					variant="outline"
+					disabled={isLoading}
+				>
+					{#if isLoading}
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+					{/if}
+					Sign Up
+				</Button>
+				<Button on:click={login} disabled={isLoading}>
+					{#if isLoading}
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+					{/if}
+					Login
+				</Button>
+			</CardFooter>
+		</Card>
+	{/if}
 </div>
