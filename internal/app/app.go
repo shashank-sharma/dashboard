@@ -8,12 +8,11 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/cmd"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/shashank-sharma/backend/internal/config"
 	"github.com/shashank-sharma/backend/internal/cronjobs"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/routes"
@@ -63,50 +62,52 @@ func New() *Application {
 		CalendarService: calendarService,
 	}
 
-	pb.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		// Logger need to be initialized inside pocketbase
 		// before serve
 		logger.RegisterApp(pb)
-		dao := pb.Dao()
-		store.InitDao(dao)
+		store.InitApp(pb)
+		config.Init(app.Pb)
 		app.InitCronjobs()
 		app.configureRoutes(e)
 
-		return nil
+		return e.Next()
 	})
+
+	app.registerHooks()
 
 	return app
 }
 
 func (app *Application) configureRoutes(e *core.ServeEvent) {
-	e.Router.GET("/api/token", routes.AuthGenerateDevToken, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/api/track/create", routes.TrackCreateAppItems, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	e.Router.GET("/api/token", routes.AuthGenerateDevToken)
+	e.Router.POST("/api/track/create", routes.TrackCreateAppItems)
 	e.Router.POST("/api/track", routes.TrackDeviceStatus)
 	e.Router.GET("/api/track/getapp", routes.GetCurrentApp)
 	e.Router.POST("/api/sync/create", routes.TrackAppSyncItems)
 	e.Router.POST("/api/focus/create", routes.TrackFocus)
-	e.Router.POST("/sync/track-items", routes.TrackAppItems, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.GET("/auth/calendar/redirect", func(c echo.Context) error {
-		return routes.CalendarAuthHandler(app.CalendarService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/auth/calendar/callback", func(c echo.Context) error {
-		return routes.CalendarAuthCallback(app.CalendarService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/api/calendar/sync", func(c echo.Context) error {
-		return routes.CalendarSyncHandler(app.CalendarService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/api/fold/getotp", func(c echo.Context) error {
-		return routes.FoldGetOtpHandler(app.FoldService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.POST("/api/fold/verifyotp", func(c echo.Context) error {
-		return routes.FoldVerifyOtpHandler(app.FoldService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.GET("/api/fold/refresh", func(c echo.Context) error {
-		return routes.FoldRefreshTokenHandler(app.FoldService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
-	e.Router.GET("/api/fold/user", func(c echo.Context) error {
-		return routes.FoldUserHandler(app.FoldService, c)
-	}, apis.RequireRecordAuth(), apis.ActivityLogger(app.Pb))
+	// e.Router.POST("/sync/track-items", routes.TrackAppItems)
+	e.Router.GET("/auth/calendar/redirect", func(e *core.RequestEvent) error {
+		return routes.CalendarAuthHandler(app.CalendarService, e)
+	})
+	e.Router.POST("/auth/calendar/callback", func(e *core.RequestEvent) error {
+		return routes.CalendarAuthCallback(app.CalendarService, e)
+	})
+	e.Router.POST("/api/calendar/sync", func(e *core.RequestEvent) error {
+		return routes.CalendarSyncHandler(app.CalendarService, e)
+	})
+	e.Router.POST("/api/fold/getotp", func(e *core.RequestEvent) error {
+		return routes.FoldGetOtpHandler(app.FoldService, e)
+	})
+	e.Router.POST("/api/fold/verifyotp", func(e *core.RequestEvent) error {
+		return routes.FoldVerifyOtpHandler(app.FoldService, e)
+	})
+	e.Router.GET("/api/fold/refresh", func(e *core.RequestEvent) error {
+		return routes.FoldRefreshTokenHandler(app.FoldService, e)
+	})
+	e.Router.GET("/api/fold/user", func(e *core.RequestEvent) error {
+		return routes.FoldUserHandler(app.FoldService, e)
+	})
 }
 
 func (app *Application) InitCronjobs() error {
@@ -128,7 +129,7 @@ func (app *Application) InitCronjobs() error {
 func (app *Application) Start() error {
 
 	// register system commands
-	app.Pb.RootCmd.AddCommand(cmd.NewAdminCommand(app.Pb))
+	app.Pb.RootCmd.AddCommand(cmd.NewSuperuserCommand(app.Pb))
 	app.Pb.RootCmd.AddCommand(cmd.NewServeCommand(app.Pb, true))
 
 	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())

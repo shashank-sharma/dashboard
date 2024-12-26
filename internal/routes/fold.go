@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -23,12 +24,12 @@ type FoldVerifyOtpAPI struct {
 	Otp         string `json:"otp"`
 }
 
-func FoldGetOtpHandler(fs *fold.FoldService, c echo.Context) error {
-	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+func FoldGetOtpHandler(fs *fold.FoldService, e *core.RequestEvent) error {
+	pbToken := e.Request.Header.Get("Authorization")
 	userId, _ := util.GetUserId(pbToken)
 
 	foldOtpData := &FoldOtpAPI{}
-	if err := c.Bind(foldOtpData); err != nil {
+	if err := e.BindBody(foldOtpData); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid input")
 	}
 
@@ -43,22 +44,22 @@ func FoldGetOtpHandler(fs *fold.FoldService, c echo.Context) error {
 	}
 	err := fs.GetOTP(foldToken)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error occured: %v", err)})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error occured: %v", err)})
 	}
 
 	if err := query.SaveRecord(foldToken); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error saving record: %v", err)})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error saving record: %v", err)})
 
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "OTP Generated"})
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "OTP Generated"})
 }
 
-func FoldVerifyOtpHandler(fs *fold.FoldService, c echo.Context) error {
-	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+func FoldVerifyOtpHandler(fs *fold.FoldService, e *core.RequestEvent) error {
+	pbToken := e.Request.Header.Get("Authorization")
 	userId, _ := util.GetUserId(pbToken)
 
 	foldData := &FoldVerifyOtpAPI{}
-	if err := c.Bind(foldData); err != nil {
+	if err := e.BindBody(foldData); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid input")
 	}
 
@@ -67,11 +68,11 @@ func FoldVerifyOtpHandler(fs *fold.FoldService, c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to verify"})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to verify"})
 	}
 	verifyResponse, err := fs.VerifyOtp(foldData.Otp, foldToken)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error occured: %v", err)})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error occured: %v", err)})
 	}
 
 	foldToken.AccessToken = verifyResponse.Data.AccessToken
@@ -86,14 +87,14 @@ func FoldVerifyOtpHandler(fs *fold.FoldService, c echo.Context) error {
 	foldToken.ExpiresAt = expiry
 
 	if err := query.SaveRecord(foldToken); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error updating accessToken and refreshToken"})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Error updating accessToken and refreshToken"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "OTP Verified successfully"})
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "OTP Verified successfully"})
 }
 
-func FoldRefreshTokenHandler(fs *fold.FoldService, c echo.Context) error {
-	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+func FoldRefreshTokenHandler(fs *fold.FoldService, e *core.RequestEvent) error {
+	pbToken := e.Request.Header.Get("Authorization")
 	userId, _ := util.GetUserId(pbToken)
 
 	foldToken, err := query.FindByFilter[*models.FoldToken](map[string]interface{}{
@@ -101,15 +102,15 @@ func FoldRefreshTokenHandler(fs *fold.FoldService, c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to refresh"})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to refresh"})
 	}
 
 	fs.Refresh(foldToken)
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
 }
 
-func FoldUserHandler(fs *fold.FoldService, c echo.Context) error {
-	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+func FoldUserHandler(fs *fold.FoldService, e *core.RequestEvent) error {
+	pbToken := e.Request.Header.Get("Authorization")
 	userId, _ := util.GetUserId(pbToken)
 
 	foldToken, err := query.FindByFilter[*models.FoldToken](map[string]interface{}{
@@ -117,10 +118,10 @@ func FoldUserHandler(fs *fold.FoldService, c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to refresh"})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Nothing to refresh"})
 	}
 
 	fs.Refresh(foldToken)
 	fs.User(foldToken)
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "Refresh done"})
 }

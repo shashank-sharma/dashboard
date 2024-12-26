@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-	pbModels "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
@@ -14,7 +14,7 @@ import (
 )
 
 func GenerateRandomId() string {
-	return security.RandomStringWithAlphabet(pbModels.DefaultIdLength, pbModels.DefaultIdAlphabet)
+	return security.RandomStringWithAlphabet(core.DefaultIdLength, core.DefaultIdAlphabet)
 }
 
 func GetUserId(tokenString string) (string, error) {

@@ -76,7 +76,7 @@ func UpdateRecord[T models.Model](filterId string, updateStruct map[string]inter
 		record.Set(key, value)
 	}
 
-	if err := store.GetDao().SaveRecord(record); err != nil {
+	if err := store.GetDao().Save(record); err != nil {
 		return err
 	}
 	return nil

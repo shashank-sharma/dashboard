@@ -1,13 +1,13 @@
 package models
 
 import (
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-var _ models.Model = (*TrackDevice)(nil)
-var _ models.Model = (*TrackItems)(nil)
-var _ models.Model = (*TrackUpload)(nil)
+var _ core.Model = (*TrackDevice)(nil)
+var _ core.Model = (*TrackItems)(nil)
+var _ core.Model = (*TrackUpload)(nil)
 
 // Use structure embedding
 type TrackDeviceAPI struct {
@@ -24,7 +24,7 @@ type TrackDeviceUpdateAPI struct {
 }
 
 type TrackDevice struct {
-	models.BaseModel
+	BaseModel
 
 	User       string         `db:"user" json:"user"`
 	Name       string         `db:"name" json:"name"`
@@ -40,7 +40,7 @@ type TrackDevice struct {
 }
 
 type TrackItems struct {
-	models.BaseModel
+	BaseModel
 
 	User      string         `db:"user" json:"user"`
 	TrackId   int64          `db:"track_id" json:"track_id"`
@@ -53,7 +53,7 @@ type TrackItems struct {
 }
 
 type TrackUpload struct {
-	models.BaseModel
+	BaseModel
 
 	User            string `db:"user" json:"user"`
 	Source          string `db:"source" json:"source"`

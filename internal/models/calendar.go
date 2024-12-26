@@ -1,16 +1,16 @@
 package models
 
 import (
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-var _ models.Model = (*CalendarToken)(nil)
-var _ models.Model = (*CalendarSync)(nil)
-var _ models.Model = (*CalendarEvent)(nil)
+var _ core.Model = (*CalendarToken)(nil)
+var _ core.Model = (*CalendarSync)(nil)
+var _ core.Model = (*CalendarEvent)(nil)
 
 type CalendarToken struct {
-	models.BaseModel
+	BaseModel
 
 	User         string         `db:"user" json:"user"`
 	Account      string         `db:"account" json:"account"`
@@ -21,7 +21,7 @@ type CalendarToken struct {
 }
 
 type CalendarSync struct {
-	models.BaseModel
+	BaseModel
 
 	User       string         `db:"user" json:"user"`
 	Token      string         `db:"token" json:"token"`
@@ -33,7 +33,7 @@ type CalendarSync struct {
 }
 
 type CalendarEvent struct {
-	models.BaseModel
+	BaseModel
 
 	CalendarId     string         `db:"calendar_id" json:"calendar_id"`
 	CalendarUId    string         `db:"calendar_uid" json:"calendar_uid"`

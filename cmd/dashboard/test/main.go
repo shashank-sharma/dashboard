@@ -15,10 +15,9 @@ func main() {
 	app := config.GetApp()
 	app.Logger().Error("Debug message")
 
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		logger.RegisterApp(app)
-		dao := app.Dao()
-		store.InitDao(dao)
+		store.InitApp(app)
 
 		logger.LogError(
 			"Debug message with attributes!",

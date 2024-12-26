@@ -1,14 +1,14 @@
 package models
 
 import (
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-var _ models.Model = (*FoldToken)(nil)
+var _ core.Model = (*FoldToken)(nil)
 
 type FoldToken struct {
-	models.BaseModel
+	BaseModel
 
 	User           string         `db:"user" json:"user"`
 	Phone          string         `db:"phone" json:"phone"`

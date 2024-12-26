@@ -3,42 +3,24 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/pocketbase/pocketbase"
 )
 
-var app *pocketbase.PocketBase
-
-func defaultPublicDir() string {
-	if strings.HasPrefix(os.Args[0], os.TempDir()) {
-		// most likely ran with go run
-		return "./pb_public"
+func getEnv(key string, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
 	}
-
-	return filepath.Join(os.Args[0], "../pb_public")
+	return value
 }
 
-func Init() {
-	app = pocketbase.New()
-	var publicDirFlag string
-
-	// add "--publicDir" option flag
-	app.RootCmd.PersistentFlags().StringVar(
-		&publicDirFlag,
-		"publicDir",
-		defaultPublicDir(),
-		"the directory to serve static files",
-	)
-
+func Init(pb *pocketbase.PocketBase) {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Failed to load environment variables")
 	}
-}
 
-func GetApp() *pocketbase.PocketBase {
-	return app
+	pb.Store().Set("ENCRYPTION_KEY", getEnv("ENCRYPTION_KEY", "default_encryption_key"))
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -18,29 +19,29 @@ type CalendarTokenAPI struct {
 	Provider string `json:"provider"`
 }
 
-func CalendarAuthHandler(cs *calendar.CalendarService, c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]interface{}{"url": cs.GetAuthUrl()})
+func CalendarAuthHandler(cs *calendar.CalendarService, e *core.RequestEvent) error {
+	return e.JSON(http.StatusOK, map[string]interface{}{"url": cs.GetAuthUrl()})
 }
 
-func CalendarAuthCallback(cs *calendar.CalendarService, c echo.Context) error {
-	pbToken := c.Request().Header.Get(echo.HeaderAuthorization)
+func CalendarAuthCallback(cs *calendar.CalendarService, e *core.RequestEvent) error {
+	pbToken := e.Request.Header.Get("Authorization")
 	userId, err := util.GetUserId(pbToken)
 
 	googleConfig := cs.GetConfig()
 
 	calTokenData := &CalendarTokenAPI{}
-	if err := c.Bind(calTokenData); err != nil {
+	if err := e.BindBody(calTokenData); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid input")
 	}
 	token, err := googleConfig.Exchange(context.Background(), calTokenData.Code)
 	if err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Invalid token exchange"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Invalid token exchange"})
 	}
 
 	client := googleConfig.Client(context.Background(), token)
 	userInfo, err := oauth.FetchUserInfo(client)
 	if err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch userinfo"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch userinfo"})
 	}
 
 	expiry := types.DateTime{}
@@ -56,7 +57,7 @@ func CalendarAuthCallback(cs *calendar.CalendarService, c echo.Context) error {
 	}
 
 	if err := query.UpsertRecord[*models.CalendarToken](calToken, map[string]interface{}{"account": userInfo.Email}); err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Error saving record"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Error saving record"})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Authenticated successfully"})
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "Authenticated successfully"})
 }

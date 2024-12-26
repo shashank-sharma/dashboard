@@ -3,21 +3,21 @@ package store
 import (
 	"sync"
 
-	"github.com/pocketbase/pocketbase/daos"
+	"github.com/pocketbase/pocketbase"
 )
 
 var (
 	once sync.Once
-	dao  *daos.Dao
+	dao  *pocketbase.PocketBase
 )
 
-func InitDao(newDao *daos.Dao) {
+func InitApp(newApp *pocketbase.PocketBase) {
 	once.Do(func() {
-		dao = newDao
+		dao = newApp
 	})
 }
 
-func GetDao() *daos.Dao {
+func GetDao() *pocketbase.PocketBase {
 	if dao == nil {
 		panic("dao has not been initialized")
 	}

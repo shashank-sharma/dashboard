@@ -1,13 +1,13 @@
 package models
 
 import (
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 )
 
-var _ models.Model = (*DevToken)(nil)
+var _ core.Model = (*DevToken)(nil)
 
 type DevToken struct {
-	models.BaseModel
+	BaseModel
 
 	User     string `db:"user" json:"user"`
 	Token    string `db:"token" json:"token"`

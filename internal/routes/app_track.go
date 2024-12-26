@@ -1,20 +1,13 @@
 package routes
 
 import (
-	"database/sql"
 	"net/http"
-	"path/filepath"
 	"time"
 
-	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/daos"
-	"github.com/pocketbase/pocketbase/forms"
-	pocketbaseModel "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/pocketbase/pocketbase/tools/types"
-	"github.com/shashank-sharma/backend/internal/config"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -68,13 +61,13 @@ type PublicTrackDeviceAPI struct {
 	Devices      []PublicDeviceData `json:"devices"`
 }
 
-func GetCurrentApp(c echo.Context) error {
+func GetCurrentApp(e *core.RequestEvent) error {
 	activeDevices, err := query.FindAllByFilter[*models.TrackDevice](map[string]interface{}{
 		"is_active": true,
 	})
 	if err != nil {
 		logger.Error.Println("Failed getting devices: ", err)
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch devices"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch devices"})
 	}
 
 	trackDevicePayload := PublicTrackDeviceAPI{
@@ -109,21 +102,21 @@ func GetCurrentApp(c echo.Context) error {
 		trackDevicePayload.Devices = append(trackDevicePayload.Devices, publicDeviceData)
 	}
 
-	return c.JSON(http.StatusOK, trackDevicePayload)
+	return e.JSON(http.StatusOK, trackDevicePayload)
 }
 
-func TrackCreateAppItems(c echo.Context) error {
+func TrackCreateAppItems(e *core.RequestEvent) error {
 	logger.Debug.Println("Started track create")
-	token := c.Request().Header.Get(echo.HeaderAuthorization)
+	token := e.Request.Header.Get("Authorization")
 	logger.Debug.Println("token =", token)
 	userId, err := util.GetUserId(token)
 	if err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
 
 	data := &models.TrackDeviceAPI{}
 
-	if err := c.Bind(data); err != nil || data.Name == "" {
+	if err := e.BindBody(data); err != nil || data.Name == "" {
 		logger.Error.Println("Error in parsing =", err)
 		return apis.NewBadRequestError("Failed to read request data", err)
 	}
@@ -138,7 +131,7 @@ func TrackCreateAppItems(c echo.Context) error {
 
 	if record != nil {
 		logger.Debug.Println("returning id:", record.Id)
-		return c.JSON(http.StatusOK, map[string]interface{}{"id": record.Id})
+		return e.JSON(http.StatusOK, map[string]interface{}{"id": record.Id})
 	} else {
 		trackDevice := &models.TrackDevice{
 			User:     userId,
@@ -158,24 +151,24 @@ func TrackCreateAppItems(c echo.Context) error {
 		}
 
 		logger.Debug.Println("Track device ID: ", trackDevice.Id)
-		return c.JSON(http.StatusOK, map[string]interface{}{"id": trackDevice.Id})
+		return e.JSON(http.StatusOK, map[string]interface{}{"id": trackDevice.Id})
 	}
 
 }
 
-func TrackAppSyncItems(c echo.Context) error {
-	token := c.Request().Header.Get("AuthSyncToken")
+func TrackAppSyncItems(e *core.RequestEvent) error {
+	token := e.Request.Header.Get("AuthSyncToken")
 	if token == "" {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
 	}
 	userId, err := util.ValidateDevToken(token)
 	if err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
 	data := EventListAPI{}
-	if err := c.Bind(&data); err != nil {
+	if err := e.BindBody(&data); err != nil {
 		logger.Error.Println("Error in parsing =", err)
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
 	}
 
 	op := OperationCount{}
@@ -241,28 +234,27 @@ func TrackAppSyncItems(c echo.Context) error {
 		logger.Error.Println("Failed updating the tracking device records")
 	}
 
-	return c.JSON(http.StatusOK, op)
+	return e.JSON(http.StatusOK, op)
 }
 
-func TrackAppItems(c echo.Context) error {
+/*
+func TrackAppItems(e *core.RequestEvent) error {
+	// TODO: Fix this damn API
 	app := config.GetApp()
-	token := c.Request().Header.Get(echo.HeaderAuthorization)
+	token := e.Request.Header.Get("Authorization")
 	logger.Debug.Println("token =", token)
 	userId, err := util.GetUserId(token)
 	if err != nil {
-		return c.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
 	data := TrackUploadAPI{}
 
-	if err := c.Bind(data); err != nil || data.Source == "" {
+	if err := e.BindBody(data); err != nil || data.Source == "" {
 		logger.Error.Println("Error in parsing =", err)
 		return apis.NewBadRequestError("Failed to read request data", err)
 	}
-	//fileContent, err := c.FormFile("file")
-	//if err != nil {
-	//	return err
-	//}
-	collection, err := app.Dao().FindCollectionByNameOrId("track_upload")
+
+	collection, err := app.FindCollectionByNameOrId("track_upload")
 	if err != nil {
 		return err
 	}
@@ -299,17 +291,19 @@ func TrackAppItems(c echo.Context) error {
 	go SyncTrackUpload(trackUpload, data.ForceCheck)
 	return c.JSON(http.StatusOK, map[string]interface{}{"message": "Task scheduled", "track_upload": trackUpload})
 }
+*/
 
+/*
 func SyncTrackUpload(trackUpload *models.TrackUpload, forceCheck bool) {
 	trackUpload.Status = "IN-PROGRESS"
 	trackUpload.MarkAsNotNew()
 	app := config.GetApp()
-	if err := app.Dao().Save(trackUpload); err != nil {
+	if err := app.Save(trackUpload); err != nil {
 		logger.Error.Println("Failed updating record")
 		return
 	}
 	defer func() {
-		if err := app.Dao().Save(trackUpload); err != nil {
+		if err := app.Save(trackUpload); err != nil {
 			logger.Error.Println("Failed updating record")
 		}
 	}()
@@ -439,3 +433,4 @@ func insertFromFile(trackUpload *models.TrackUpload, forceCheck bool) (*Operatio
 	}
 	return operationCount, nil
 }
+*/
