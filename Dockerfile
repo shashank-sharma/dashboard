@@ -1,5 +1,5 @@
 # Cache gogcc alpine
-FROM --platform=$BUILDPLATFORM golang:1.21-alpine as gogcc
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine as gogcc
 
 # Accept the target architecture as a build argument
 ARG TARGETARCH
