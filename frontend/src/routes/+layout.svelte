@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import SettingsModal from "$lib/components/SettingsModal.svelte";
     import { navigating } from "$app/stores";
     import { Toaster } from "$lib/components/ui/sonner";
     import { fade } from "svelte/transition";
@@ -66,6 +67,7 @@
     class:opacity-50={$navigating}
 >
     <header class="fixed top-0 right-0 m-4 z-50">
+        <SettingsModal />
         <Button variant="ghost" size="icon" on:click={toggleTheme}>
             {#if $theme === "dark"}
                 <Sun

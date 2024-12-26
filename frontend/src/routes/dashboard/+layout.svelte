@@ -19,6 +19,7 @@
         { id: "bookmarks", label: "Bookmarks", icon: "Bookmark" },
         { id: "expenses", label: "Expenses", icon: "DollarSign" },
         { id: "tasks", label: "Tasks", icon: "CheckSquare" },
+        { id: "tokens", label: "Token", icon: "KeySquare" },
     ];
 
     async function setActiveSection(sectionId: string) {
