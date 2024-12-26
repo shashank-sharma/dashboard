@@ -8,7 +8,6 @@ import (
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
-	"github.com/shashank-sharma/backend/internal/util"
 )
 
 type TrackFocusAPI struct {
@@ -25,7 +24,7 @@ func TrackFocus(e *core.RequestEvent) error {
 	if token == "" {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
 	}
-	userId, err := util.ValidateDevToken(token)
+	userId, err := query.ValidateDevToken(token)
 	if err != nil {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}

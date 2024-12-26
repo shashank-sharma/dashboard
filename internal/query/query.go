@@ -5,6 +5,7 @@ import (
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/store"
+	"github.com/shashank-sharma/backend/internal/util"
 )
 
 func BaseModelQuery[T models.Model](m T) *dbx.SelectQuery {
@@ -59,6 +60,8 @@ func UpsertRecord[T models.Model](model T, filterStruct map[string]interface{}) 
 		model.SetId(record.GetId())
 		model.MarkAsNotNew()
 	}
+
+	model.SetId(util.GenerateRandomId())
 	if err := SaveRecord(model); err != nil {
 		return err
 	}

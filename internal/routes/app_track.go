@@ -161,7 +161,7 @@ func TrackAppSyncItems(e *core.RequestEvent) error {
 	if token == "" {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
 	}
-	userId, err := util.ValidateDevToken(token)
+	userId, err := query.ValidateDevToken(token)
 	if err != nil {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
 	}
