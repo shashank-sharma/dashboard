@@ -154,9 +154,10 @@
                 <div class="flex-grow overflow-hidden border-b">
                     <div class="h-full" style="height: {editorHeight}px">
                         <MarkdownEditor 
-                            {carta} 
+                            {carta}
                             bind:value={content} 
                             class="carta-editor-custom {$theme === 'dark' ? 'dark' : ''}"
+                            mode="tabs"
                         />
                     </div>
                 </div>

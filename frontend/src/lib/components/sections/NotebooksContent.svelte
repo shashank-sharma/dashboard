@@ -88,6 +88,7 @@
             newNotebookName = "";
             toast.success("Notebook created successfully");
         } catch (error) {
+            console.log("Error creating notebook: ", error);
             toast.error("Failed to create notebook");
         }
     }
