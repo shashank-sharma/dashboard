@@ -1,11 +1,16 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { onMount } from "svelte";
-    import { Avatar, AvatarImage, AvatarFallback } from "$lib/components/ui/avatar";
-    import { slide } from 'svelte/transition';
-    import { tweened } from 'svelte/motion';
-    import { cubicOut } from 'svelte/easing';
-    
+    import {
+        Avatar,
+        AvatarImage,
+        AvatarFallback,
+    } from "$lib/components/ui/avatar";
+    import { slide } from "svelte/transition";
+    import { tweened } from "svelte/motion";
+    import { cubicOut } from "svelte/easing";
+    import { currentUser } from "$lib/pocketbase";
+
     export let sections: { id: string; label: string; icon: string }[];
     export let activeSection: string;
     export let setActiveSection: (sectionId: string) => void;
@@ -19,7 +24,7 @@
     // Width animation
     const width = tweened(256, {
         duration: 200,
-        easing: cubicOut
+        easing: cubicOut,
     });
 
     $: width.set(isCollapsed ? 84 : 256);
@@ -34,20 +39,20 @@
     }
 </script>
 
-<aside 
+<aside
     class="bg-card text-card-foreground border-r flex flex-col h-screen transition-all duration-200 ease-out"
     style:width="{$width}px"
 >
     <!-- Dashboard Header -->
     <div class="p-4 border-b">
-        <Button 
-            variant="ghost" 
-            class="w-full justify-start" 
+        <Button
+            variant="ghost"
+            class="w-full justify-start"
             on:click={toggleSidebar}
         >
-            {#if mounted && Icons['LayoutDashboard']}
+            {#if mounted && Icons["LayoutDashboard"]}
                 <svelte:component
-                    this={Icons['LayoutDashboard']}
+                    this={Icons["LayoutDashboard"]}
                     class="h-5 w-5"
                 />
             {/if}
@@ -72,7 +77,9 @@
                     />
                 {/if}
                 {#if !isCollapsed}
-                    <span class="ml-2" transition:slide|local>{section.label}</span>
+                    <span class="ml-2" transition:slide|local
+                        >{section.label}</span
+                    >
                 {/if}
             </Button>
         {/each}
@@ -89,10 +96,18 @@
                     {username.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
             </Avatar>
-            {#if !isCollapsed}
-                <span class="text-sm font-medium truncate" transition:slide|local>
-                    {username}
-                </span>
+            {#if !isCollapsed && $currentUser}
+                <div class="flex flex-col gap-1 truncate">
+                    <div class="text-base truncate" transition:slide|local>
+                        {$currentUser.email}
+                    </div>
+                    <div
+                        class="text-sm truncate opacity-50"
+                        transition:slide|local
+                    >
+                        {$currentUser.username}
+                    </div>
+                </div>
             {/if}
         </div>
     </div>

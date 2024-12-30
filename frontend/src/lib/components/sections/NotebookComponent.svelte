@@ -1,9 +1,13 @@
 <script lang="ts">
+    import type { RecordModel } from "pocketbase";
     import { onMount, onDestroy } from "svelte";
     import { Button } from "$lib/components/ui/button";
     import { Card } from "$lib/components/ui/card";
     import { Alert, AlertDescription } from "$lib/components/ui/alert";
-    import { notebookService } from "$lib/services/notebookService";
+    import {
+        notebookService,
+        type Notebook,
+    } from "$lib/services/notebookService";
     import { pyodideService } from "$lib/services/pyodideService";
     import { Play, Plus, Save, Trash2, Type } from "lucide-svelte";
     import { toast } from "svelte-sonner";
@@ -63,11 +67,11 @@
 
     export let id: string;
 
-    let notebook = null;
+    let notebook: Partial<Notebook> | RecordModel | null = null;
     let loading = true;
     let executingCells = new Set();
     let editors = new Map();
-    let savingTimeout;
+    let savingTimeout: string | number | NodeJS.Timeout | undefined;
 
     onMount(async () => {
         try {
@@ -153,7 +157,7 @@
 
     function addCell(type: "code" | "markdown" = "code") {
         const newCell = {
-            id: crypto.randomUUID(),
+            id: window.crypto.randomUUID(),
             content: "",
             output: "",
             type,

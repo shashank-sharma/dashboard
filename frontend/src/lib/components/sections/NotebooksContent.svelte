@@ -30,7 +30,7 @@
     } from "lucide-svelte";
     import { toast } from "svelte-sonner";
 
-    let notebooks = [];
+    let notebooks: any[] = [];
     let loading = true;
     let dialogOpen = false;
     let newNotebookName = "";
@@ -73,7 +73,7 @@
                 version: selectedVersion,
                 cells: [
                     {
-                        id: crypto.randomUUID(),
+                        id: window.crypto.randomUUID(),
                         content:
                             "# Welcome to your new notebook\n# Press Run to execute code",
                         output: "",
