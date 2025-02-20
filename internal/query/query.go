@@ -59,9 +59,13 @@ func UpsertRecord[T models.Model](model T, filterStruct map[string]interface{}) 
 	if err == nil {
 		model.SetId(record.GetId())
 		model.MarkAsNotNew()
+	} else {
+		model.SetId(util.GenerateRandomId())
+		model.RefreshCreated()
 	}
 
-	model.SetId(util.GenerateRandomId())
+	model.RefreshUpdated()
+
 	if err := SaveRecord(model); err != nil {
 		return err
 	}
@@ -130,6 +134,24 @@ func FindAllByFilter[T models.Model](filterStruct map[string]interface{}) ([]T, 
 	}
 
 	return results, nil
+}
+
+func CountRecords[T models.Model](filterStruct map[string]interface{}) (int64, error) {
+	var m T
+	var total int64
+	query := BaseModelQuery(m)
+	filter := structToHashExp(filterStruct)
+
+	q := query.
+		AndWhere(filter).
+		Select("count(*)")
+
+	err := q.Row(&total)
+	if err != nil {
+		return 0, err
+	}
+
+	return total, nil
 }
 
 func BaseQuery[T models.Model]() *dbx.SelectQuery {

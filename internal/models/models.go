@@ -1,5 +1,7 @@
 package models
 
+import "github.com/pocketbase/pocketbase/tools/types"
+
 type Model interface {
 	TableName() string
 	PK() any
@@ -9,13 +11,17 @@ type Model interface {
 	GetId() string
 	MarkAsNew()
 	MarkAsNotNew()
+	RefreshCreated()
+	RefreshUpdated()
 }
 
 type BaseModel struct {
 	Model
 	lastSavedPK string
 
-	Id string `db:"id" json:"id" form:"id" xml:"id"`
+	Id      string         `db:"id" json:"id" form:"id" xml:"id"`
+	Created types.DateTime `json:"created"`
+	Updated types.DateTime `json:"updated"`
 }
 
 func (m *BaseModel) LastSavedPK() any {
@@ -65,4 +71,14 @@ func (m *BaseModel) GetId() string {
 // SetId sets the model id to the provided string value.
 func (m *BaseModel) SetId(id string) {
 	m.Id = id
+}
+
+// RefreshCreated updates the model Created field with the current datetime.
+func (m *BaseModel) RefreshCreated() {
+	m.Created = types.NowDateTime()
+}
+
+// RefreshUpdated updates the model Updated field with the current datetime.
+func (m *BaseModel) RefreshUpdated() {
+	m.Updated = types.NowDateTime()
 }
