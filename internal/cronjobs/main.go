@@ -17,7 +17,7 @@ func Run(cronJobs []CronJob) error {
 
 	for _, job := range cronJobs {
 		if job.IsActive {
-			logger.LogInfo("Running CRON:", job.Name)
+			logger.LogInfo("Running CRON", "job", job.Name)
 			err := scheduler.Add(job.Name, job.Interval, job.JobFunc)
 			if err != nil {
 				logger.LogError("Failed to run CRON: ", job.Name)
