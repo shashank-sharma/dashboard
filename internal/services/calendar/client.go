@@ -31,7 +31,7 @@ func NewCalendarService() *CalendarService {
 }
 
 func (cs *CalendarService) GetAuthUrl() string {
-	return cs.googleConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("redirect_uri", cs.googleConfig.RedirectURL))
+	return cs.googleConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce, oauth2.SetAuthURLParam("prompt", "consent"), oauth2.SetAuthURLParam("redirect_uri", cs.googleConfig.RedirectURL))
 }
 
 func (cs *CalendarService) GetConfig() *oauth2.Config {

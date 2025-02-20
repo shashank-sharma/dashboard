@@ -18,6 +18,7 @@ import (
 	"github.com/shashank-sharma/backend/internal/routes"
 	"github.com/shashank-sharma/backend/internal/services/calendar"
 	"github.com/shashank-sharma/backend/internal/services/fold"
+	"github.com/shashank-sharma/backend/internal/services/mail"
 	"github.com/shashank-sharma/backend/internal/store"
 )
 
@@ -26,6 +27,7 @@ type Application struct {
 	Pb              *pocketbase.PocketBase
 	FoldService     *fold.FoldService
 	CalendarService *calendar.CalendarService
+	MailService     *mail.MailService
 }
 
 func defaultPublicDir() string {
@@ -55,11 +57,13 @@ func New() *Application {
 	// Define all the service here
 	foldService := fold.NewFoldService("https://api.fold.money/api")
 	calendarService := calendar.NewCalendarService()
+	mailService := mail.NewMailService()
 
 	app := &Application{
 		Pb:              pb,
 		FoldService:     foldService,
 		CalendarService: calendarService,
+		MailService:     mailService,
 	}
 
 	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
@@ -87,6 +91,8 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/sync/create", routes.TrackAppSyncItems)
 	e.Router.POST("/api/focus/create", routes.TrackFocus)
 	// e.Router.POST("/sync/track-items", routes.TrackAppItems)
+
+	// Calendar
 	e.Router.GET("/auth/calendar/redirect", func(e *core.RequestEvent) error {
 		return routes.CalendarAuthHandler(app.CalendarService, e)
 	})
@@ -96,6 +102,25 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	e.Router.POST("/api/calendar/sync", func(e *core.RequestEvent) error {
 		return routes.CalendarSyncHandler(app.CalendarService, e)
 	})
+
+	// Mail
+	e.Router.GET("/auth/mail/redirect", func(e *core.RequestEvent) error {
+		return routes.MailAuthHandler(app.MailService, e)
+	})
+
+	e.Router.POST("/auth/mail/callback", func(e *core.RequestEvent) error {
+		return routes.MailAuthCallback(app.MailService, e)
+	})
+
+	e.Router.POST("/api/mail/sync", func(e *core.RequestEvent) error {
+		return routes.MailSyncHandler(app.MailService, e)
+	})
+
+	e.Router.GET("/api/mail/sync/status", func(e *core.RequestEvent) error {
+		return routes.MailSyncStatusHandler(app.MailService, e)
+	})
+
+	// Money
 	e.Router.POST("/api/fold/getotp", func(e *core.RequestEvent) error {
 		return routes.FoldGetOtpHandler(app.FoldService, e)
 	})
