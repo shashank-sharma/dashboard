@@ -4,12 +4,26 @@
     import Sidebar from "$lib/components/Sidebar.svelte";
     import SectionLoading from "$lib/components/SectionLoading.svelte";
     import { fade } from "svelte/transition";
+    import CommandPalette from "$lib/components/CommandPalette.svelte";
+    import { Button } from "$lib/components/ui/button";
+    import { Sun, Moon } from "lucide-svelte";
+    import SettingsModal from "$lib/components/SettingsModal.svelte";
+    import { writable } from "svelte/store";
+    import NotificationCenter from "$lib/components/NotificationCenter.svelte";
+    import { onMount, setContext } from "svelte";
+    import { pb, refreshToken } from "$lib/pocketbase";
 
     let activeSection = "dashboard";
     let isLoading = false;
+    let theme = writable("light");
+
+    function toggleTheme() {
+        theme.update((t) => (t === "dark" ? "light" : "dark"));
+    }
 
     const sections = [
         { id: "", label: "Dashboard", icon: "LayoutDashboard" },
+        { id: "mails", label: "Mails", icon: "Inbox" },
         { id: "servers", label: "Servers", icon: "Server" },
         { id: "notebooks", label: "Notebooks", icon: "Book" },
         { id: "posts", label: "Posts", icon: "FileText" },
@@ -22,6 +36,39 @@
         { id: "tokens", label: "Token", icon: "KeySquare" },
         { id: "chronicles", label: "Chronicles", icon: "MountainSnow" },
     ];
+
+    setContext("theme", {
+        theme: theme,
+        toggleTheme: toggleTheme,
+    });
+
+    onMount(async () => {
+        try {
+            if (pb.authStore.isValid) {
+                await refreshToken();
+            } else if (!window.location.pathname.startsWith("/auth")) {
+                pb.authStore.clear();
+                goto("/auth/login");
+            }
+
+            // Initialize theme from localStorage if available
+            const storedTheme = localStorage.getItem("theme");
+            if (storedTheme) {
+                theme.set(storedTheme);
+            }
+
+            // Subscribe to theme changes and update localStorage
+            theme.subscribe((value) => {
+                localStorage.setItem("theme", value);
+                if (value === "dark") {
+                    document.documentElement.classList.add("dark");
+                } else {
+                    document.documentElement.classList.remove("dark");
+                }
+            });
+        } finally {
+        }
+    });
 
     async function setActiveSection(sectionId: string) {
         try {
@@ -63,7 +110,31 @@
             </div>
         {/if}
     </main>
+    <CommandPalette />
 </div>
+
+<header class="fixed top-0 right-0 m-4 z-2">
+    <SettingsModal />
+    <Button variant="ghost" size="icon" on:click={toggleTheme}>
+        {#if $theme === "dark"}
+            <Sun
+                class="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+            />
+            <Moon
+                class="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+            />
+        {:else}
+            <Sun
+                class="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all"
+            />
+            <Moon
+                class="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all"
+            />
+        {/if}
+        <span class="sr-only">Toggle theme</span>
+    </Button>
+    <NotificationCenter />
+</header>
 
 <style>
     main {

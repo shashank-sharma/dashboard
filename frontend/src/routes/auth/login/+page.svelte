@@ -13,6 +13,15 @@
 	import { Label } from "$lib/components/ui/label";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 	import { Loader2 } from "lucide-svelte";
+	import { onMount } from "svelte";
+	import { goto } from "$app/navigation";
+
+	onMount(() => {
+		// Check if user is already logged in
+		if (pb.authStore.isValid) {
+			goto("/dashboard"); // or wherever your home page is
+		}
+	});
 
 	let username: string = "";
 	let password: string = "";

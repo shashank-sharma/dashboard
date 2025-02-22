@@ -1,0 +1,81 @@
+<script lang="ts">
+    import { onMount } from "svelte";
+    import * as Command from "$lib/components/ui/command";
+    import { goto } from "$app/navigation";
+    import {
+        LayoutDashboard,
+        Server,
+        Book,
+        FileText,
+        Palette,
+        Package,
+        Mail,
+        Bookmark,
+        DollarSign,
+        CheckSquare,
+    } from "lucide-svelte";
+
+    let open = false;
+
+    const sections = [
+        { id: "", label: "Dashboard", icon: LayoutDashboard },
+        { id: "servers", label: "Servers", icon: Server },
+        { id: "notebooks", label: "Notebooks", icon: Book },
+        { id: "posts", label: "Posts", icon: FileText },
+        { id: "colors", label: "Colors", icon: Palette },
+        { id: "inventory", label: "Inventory", icon: Package },
+        { id: "newsletter", label: "Newsletter", icon: Mail },
+        { id: "bookmarks", label: "Bookmarks", icon: Bookmark },
+        { id: "expenses", label: "Expenses", icon: DollarSign },
+        { id: "tasks", label: "Tasks", icon: CheckSquare },
+    ];
+
+    function navigateToSection(sectionId: string) {
+        const path = sectionId ? `/dashboard/${sectionId}` : "/dashboard";
+        goto(path);
+        open = false;
+    }
+
+    onMount(() => {
+        function handleKeydown(e: KeyboardEvent) {
+            if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                open = !open;
+            }
+        }
+
+        document.addEventListener("keydown", handleKeydown);
+        return () => {
+            document.removeEventListener("keydown", handleKeydown);
+        };
+    });
+</script>
+
+<div class="fixed bottom-4 right-4 z-50">
+    <p class="text-muted-foreground text-sm">
+        Press
+        <kbd
+            class="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100"
+        >
+            <span class="text-xs">⌘</span>K
+        </kbd>
+    </p>
+</div>
+
+<Command.Dialog bind:open>
+    <Command.Input placeholder="Type a command or search sections..." />
+    <Command.List>
+        <Command.Empty>No results found.</Command.Empty>
+        <Command.Group heading="Dashboard Sections">
+            {#each sections as section}
+                <Command.Item onSelect={() => navigateToSection(section.id)}>
+                    <svelte:component
+                        this={section.icon}
+                        class="mr-2 h-4 w-4"
+                    />
+                    <span>{section.label}</span>
+                </Command.Item>
+            {/each}
+        </Command.Group>
+    </Command.List>
+</Command.Dialog>

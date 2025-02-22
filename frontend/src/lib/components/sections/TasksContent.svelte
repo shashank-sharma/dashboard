@@ -5,437 +5,475 @@
     import { Input } from "$lib/components/ui/input";
     import { Button } from "$lib/components/ui/button";
     import { Textarea } from "$lib/components/ui/textarea";
-    import {
-        Select,
-        SelectContent,
-        SelectItem,
-        SelectTrigger,
-        SelectValue,
-    } from "$lib/components/ui/select";
-    import {
-        Card,
-        CardContent,
-        CardDescription,
-        CardHeader,
-        CardTitle,
-    } from "$lib/components/ui/card";
-    import { Badge } from "$lib/components/ui/badge";
-    import * as Dialog from "$lib/components/ui/dialog";
+    import * as Drawer from "$lib/components/ui/drawer";
     import * as AlertDialog from "$lib/components/ui/alert-dialog";
-    import { Search, Trash2, Edit, Plus } from "lucide-svelte";
+    import { Search, Trash2, Plus, X, Calendar, Clock } from "lucide-svelte";
+    import { fade, fly } from "svelte/transition";
+    import { format } from "date-fns";
+    import DateTimePicker from "$lib/components/DateTimePicker.svelte";
 
-    let tasks = [];
-    let searchQuery = "";
-    let selectedCategory = "all";
-    let totalPages = 1;
-    let currentPage = 1;
-    const perPage = 9;
+    // Types
+    interface Category {
+        value: string;
+        label: string;
+        color: string;
+    }
 
-    let showCreateDialog = false;
-    let showViewDialog = false;
-    let showDeleteDialog = false;
-    let selectedTask = null;
-    let isEditing = false;
+    interface Task {
+        id: string;
+        title: string;
+        description: string;
+        category: string;
+        due?: string;
+        created: string;
+        updated: string;
+        user: string;
+    }
 
-    let formTitle = "";
-    let formDescription = "";
-    let formCategory = "focus";
-
-    const categories = [
-        { value: "focus", label: "Focus" },
-        { value: "goals", label: "Goals" },
-        { value: "fitin", label: "Fit In" },
-        { value: "backburner", label: "Backburner" },
+    // Constants
+    const categories: Category[] = [
+        {
+            value: "focus",
+            label: "Focus",
+            color: "bg-red-100 dark:bg-red-900/20",
+        },
+        {
+            value: "goals",
+            label: "Goals",
+            color: "bg-blue-100 dark:bg-blue-900/20",
+        },
+        {
+            value: "fitin",
+            label: "Fit In",
+            color: "bg-green-100 dark:bg-green-900/20",
+        },
+        {
+            value: "backburner",
+            label: "Backburner",
+            color: "bg-yellow-100 dark:bg-yellow-900/20",
+        },
     ];
 
-    const categoryColors = {
-        focus: "bg-red-500",
-        goals: "bg-blue-500",
-        fitin: "bg-green-500",
-        backburner: "bg-yellow-500",
+    const categoryTextColors: Record<string, string> = {
+        focus: "text-red-700 dark:text-red-300",
+        goals: "text-blue-700 dark:text-blue-300",
+        fitin: "text-green-700 dark:text-green-300",
+        backburner: "text-yellow-700 dark:text-yellow-300",
     };
 
-    async function fetchTasks() {
+    // State
+    let tasks: Task[] = [];
+    let searchQuery = "";
+    let showDeleteDialog = false;
+    let taskToDelete: Task | null = null;
+    let selectedTask: Task | null = null;
+    let showDrawer = false;
+    let taskDueDate: Date | undefined = undefined;
+    let showQuickAdd = false;
+    let quickAddCategory = "";
+    let newTaskTitle = "";
+
+    // Task operations
+    async function fetchTasks(): Promise<void> {
         try {
-            const filterConditions = [];
-            if (selectedCategory !== "all") {
-                filterConditions.push(`category = "${selectedCategory}"`);
-            }
+            const filterConditions = [`user = "${pb.authStore.model?.id}"`];
             if (searchQuery) {
                 filterConditions.push(
                     `(title ~ "${searchQuery}" || description ~ "${searchQuery}")`,
                 );
             }
 
-            filterConditions.push(`user = "${pb.authStore.model.id}"`);
-
             const filter = filterConditions.join(" && ");
 
-            const resultList = await pb
-                .collection("tasks")
-                .getList(currentPage, perPage, {
-                    sort: "-created",
-                    filter,
-                });
+            const resultList = await pb.collection("tasks").getList(1, 50, {
+                sort: "-created",
+                filter,
+            });
 
             tasks = resultList.items;
-            totalPages = Math.ceil(resultList.totalItems / perPage);
         } catch (error) {
             console.error("Error fetching tasks:", error);
-            toast.error("Failed to fetch tasks.");
+            toast.error("Failed to fetch tasks");
         }
     }
 
-    function handleTaskClick(task) {
-        selectedTask = task;
-        formTitle = task.title;
-        formDescription = task.description;
-        formCategory = task.category;
-        isEditing = false;
-        showViewDialog = true;
-    }
-
-    async function createTask() {
+    async function updateTask(task: Task, fullUpdate = false): Promise<void> {
         try {
-            if (!formTitle.trim()) {
-                toast.error("Title is required");
-                return;
-            }
+            const updateData = fullUpdate
+                ? {
+                      title: task.title,
+                      description: task.description,
+                      category: task.category,
+                      due: taskDueDate?.toISOString(),
+                  }
+                : {
+                      title: task.title,
+                      description: task.description,
+                      category: task.category,
+                  };
 
-            await pb.collection("tasks").create({
-                title: formTitle.trim(),
-                description: formDescription.trim(),
-                category: formCategory,
-                user: pb.authStore.model.id,
-            });
-
-            toast.success("Task created successfully!");
-            resetForm();
-            showCreateDialog = false;
-            fetchTasks();
-        } catch (error) {
-            console.error("Error creating task:", error);
-            toast.error("Failed to create task.");
-        }
-    }
-
-    async function updateTask() {
-        try {
-            if (!formTitle.trim()) {
-                toast.error("Title is required");
-                return;
-            }
-
-            await pb.collection("tasks").update(selectedTask.id, {
-                title: formTitle.trim(),
-                description: formDescription.trim(),
-                category: formCategory,
-                user: pb.authStore.model.id,
-            });
-
-            toast.success("Task updated successfully!");
-            resetForm();
-            showViewDialog = false;
-            fetchTasks();
+            await pb.collection("tasks").update(task.id, updateData);
+            await fetchTasks();
+            toast.success("Task updated");
         } catch (error) {
             console.error("Error updating task:", error);
-            toast.error("Failed to update task.");
+            toast.error("Failed to update task");
         }
     }
 
-    async function deleteTask() {
+    async function deleteTask(): Promise<void> {
+        if (!taskToDelete) return;
+
         try {
-            await pb.collection("tasks").delete(selectedTask.id);
-            toast.success("Task deleted successfully!");
+            await pb.collection("tasks").delete(taskToDelete.id);
+            toast.success("Task deleted");
             showDeleteDialog = false;
-            showViewDialog = false;
-            resetForm();
-            fetchTasks();
+            taskToDelete = null;
+            await fetchTasks();
         } catch (error) {
             console.error("Error deleting task:", error);
-            toast.error("Failed to delete task.");
+            toast.error("Failed to delete task");
         }
     }
 
-    function resetForm() {
-        formTitle = "";
-        formDescription = "";
-        formCategory = "focus";
-        isEditing = false;
-        selectedTask = null;
+    async function quickAddTask(): Promise<void> {
+        if (!newTaskTitle.trim() || !quickAddCategory) return;
+
+        try {
+            await pb.collection("tasks").create({
+                title: newTaskTitle.trim(),
+                description: "",
+                category: quickAddCategory,
+                user: pb.authStore.model?.id,
+            });
+
+            newTaskTitle = "";
+            showQuickAdd = false;
+            quickAddCategory = "";
+            await fetchTasks();
+            toast.success("Task created");
+        } catch (error) {
+            console.error("Error creating task:", error);
+            toast.error("Failed to create task");
+        }
     }
 
-    function handleCategoryChange(value) {
-        selectedCategory = value;
-        currentPage = 1;
-        fetchTasks();
+    // Event handlers
+    function handleQuickAdd(category: string): void {
+        quickAddCategory = category;
+        showQuickAdd = true;
     }
 
-    function handleCloseCreateDialog() {
-        showCreateDialog = false;
-        resetForm();
+    function handleCardClick(task: Task): void {
+        selectedTask = { ...task };
+        taskDueDate = task.due ? new Date(task.due) : undefined;
+        showDrawer = true;
     }
 
-    function handleCloseViewDialog() {
-        showViewDialog = false;
-        isEditing = false;
-        resetForm();
+    function handleDateSelect(date: Date) {
+        taskDueDate = date;
     }
+
+    // Computed
+    $: categoryTasks = categories.map((cat) => ({
+        ...cat,
+        tasks: tasks.filter((task) => task.category === cat.value),
+    }));
 
     onMount(() => {
-        fetchTasks();
+        void fetchTasks();
     });
 </script>
 
-<div class="container mx-auto p-6">
-    <div class="flex flex-col gap-6">
-        <div
-            class="flex flex-col sm:flex-row items-center justify-between gap-4"
-        >
-            <div class="relative w-full max-w-sm">
-                <Search
-                    class="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
-                />
-                <Input
-                    type="text"
-                    placeholder="Search tasks..."
-                    class="pl-8"
-                    value={searchQuery}
-                    on:input={(e) => {
-                        searchQuery = e.target.value;
-                        fetchTasks();
-                    }}
-                />
-            </div>
-            <div class="flex gap-4">
-                <Select value={selectedCategory}>
-                    <SelectTrigger class="w-[180px]">
-                        <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem
-                            value="all"
-                            on:click={() => handleCategoryChange("all")}
-                        >
-                            All Categories
-                        </SelectItem>
-                        {#each categories as category}
-                            <SelectItem
-                                value={category.value}
-                                on:click={() =>
-                                    handleCategoryChange(category.value)}
-                            >
-                                {category.label}
-                            </SelectItem>
-                        {/each}
-                    </SelectContent>
-                </Select>
-
-                <Button
-                    on:click={() => {
-                        resetForm();
-                        showCreateDialog = true;
-                    }}
-                >
-                    <Plus class="mr-2 h-4 w-4" />
-                    New Task
-                </Button>
-            </div>
+<div class="container mx-auto p-4">
+    <!-- Search Bar -->
+    <div class="mb-6 flex items-center gap-4">
+        <div class="relative flex-1 max-w-md">
+            <Search
+                class="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
+            />
+            <Input
+                type="text"
+                placeholder="Search tasks..."
+                class="pl-8"
+                bind:value={searchQuery}
+                on:input={() => void fetchTasks()}
+            />
         </div>
+    </div>
 
-        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {#each tasks as task (task.id)}
-                <div
-                    role="button"
-                    tabindex="0"
-                    on:click={() => handleTaskClick(task)}
-                    on:keydown={(e) =>
-                        e.key === "Enter" && handleTaskClick(task)}
-                >
-                    <Card
-                        class="cursor-pointer hover:shadow-lg transition-shadow h-full"
+    <!-- Tasks Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {#each categoryTasks as category}
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-between mb-4">
+                    <h2
+                        class="text-lg font-semibold {categoryTextColors[
+                            category.value
+                        ]}"
                     >
-                        <CardHeader>
-                            <div class="flex items-center justify-between">
-                                <CardTitle class="text-xl"
-                                    >{task.title}</CardTitle
-                                >
-                                <Badge class={categoryColors[task.category]}>
-                                    {categories.find(
-                                        (c) => c.value === task.category,
-                                    )?.label}
-                                </Badge>
-                            </div>
-                            <CardDescription
-                                class="text-sm text-muted-foreground"
-                            >
-                                Created on {new Date(
-                                    task.created,
-                                ).toLocaleDateString()}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p class="text-sm line-clamp-3">
-                                {task.description}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-            {/each}
-        </div>
-
-        {#if tasks.length === 0}
-            <div class="text-center py-12">
-                <p class="text-muted-foreground">No tasks found.</p>
-            </div>
-        {/if}
-
-        {#if totalPages > 1}
-            <div class="flex justify-center gap-2 mt-6">
-                {#each Array(totalPages) as _, i}
+                        {category.label}
+                    </h2>
                     <Button
-                        variant={currentPage === i + 1 ? "default" : "outline"}
+                        variant="ghost"
                         size="sm"
-                        on:click={() => {
-                            currentPage = i + 1;
-                            fetchTasks();
-                        }}
+                        class={categoryTextColors[category.value]}
+                        on:click={() => handleQuickAdd(category.value)}
                     >
-                        {i + 1}
+                        <Plus class="h-4 w-4" />
                     </Button>
-                {/each}
+                </div>
+
+                <div
+                    class="flex-1 {category.color} rounded-lg p-4 min-h-[500px]"
+                >
+                    {#if showQuickAdd && quickAddCategory === category.value}
+                        <div
+                            class="bg-card border rounded-lg p-3 mb-3 shadow-sm"
+                            in:fly={{ y: -20, duration: 200 }}
+                        >
+                            <Input
+                                placeholder="Enter task title..."
+                                bind:value={newTaskTitle}
+                                class="mb-2"
+                                on:keydown={(e) =>
+                                    e.key === "Enter" && void quickAddTask()}
+                            />
+                            <div class="flex justify-end gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    on:click={() => {
+                                        showQuickAdd = false;
+                                        newTaskTitle = "";
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    on:click={() => void quickAddTask()}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+                        </div>
+                    {/if}
+
+                    {#each category.tasks as task (task.id)}
+                        <div
+                            class="bg-card border rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            in:fade
+                            on:click={() => handleCardClick(task)}
+                            on:keydown={(e) =>
+                                e.key === "Enter" && handleCardClick(task)}
+                            role="button"
+                            tabindex="0"
+                        >
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="flex-1">
+                                    {task.title}
+                                </div>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="h-8 w-8 text-destructive hover:text-destructive"
+                                    on:click={(e) => {
+                                        e.stopPropagation();
+                                        taskToDelete = task;
+                                        showDeleteDialog = true;
+                                    }}
+                                >
+                                    <Trash2 class="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {#if task.description}
+                                <p class="text-sm text-muted-foreground mt-2">
+                                    {task.description}
+                                </p>
+                            {/if}
+                        </div>
+                    {/each}
+                </div>
             </div>
-        {/if}
+        {/each}
     </div>
 </div>
 
-<!-- Create Task Dialog -->
-<Dialog.Root
-    open={showCreateDialog}
-    onOpenChange={(open) => {
-        if (!open) handleCloseCreateDialog();
-    }}
->
-    <Dialog.Content class="sm:max-w-[625px]">
-        <Dialog.Header>
-            <Dialog.Title>Create New Task</Dialog.Title>
-            <Dialog.Description>
-                Fill in the details below to create a new task.
-            </Dialog.Description>
-        </Dialog.Header>
-        <div class="grid gap-4 py-4">
-            <Input placeholder="Task title" bind:value={formTitle} />
-            <Textarea
-                placeholder="Task description"
-                bind:value={formDescription}
-            />
-            <Select value={formCategory}>
-                <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                    {#each categories as category}
-                        <SelectItem
-                            value={category.value}
-                            on:click={() => (formCategory = category.value)}
-                        >
-                            {category.label}
-                        </SelectItem>
-                    {/each}
-                </SelectContent>
-            </Select>
-        </div>
-        <Dialog.Footer>
-            <Button variant="outline" on:click={handleCloseCreateDialog}>
-                Cancel
-            </Button>
-            <Button on:click={createTask}>Create Task</Button>
-        </Dialog.Footer>
-    </Dialog.Content>
-</Dialog.Root>
+<!-- Task Details Drawer -->
+<Drawer.Root bind:open={showDrawer}>
+    <Drawer.Content class="h-[75%]">
+        <div class="mx-auto w-full max-w-2xl h-full relative">
+            <Drawer.Close class="absolute right-4 top-4">
+                <Button variant="ghost" size="icon">
+                    <X class="h-4 w-4" />
+                    <span class="sr-only">Close</span>
+                </Button>
+            </Drawer.Close>
 
-<!-- View/Edit Task Dialog -->
-<Dialog.Root
-    open={showViewDialog}
-    onOpenChange={(open) => {
-        if (!open) handleCloseViewDialog();
-    }}
->
-    <Dialog.Content class="sm:max-w-[625px]">
-        <Dialog.Header>
-            <Dialog.Title>{isEditing ? "Edit Task" : "View Task"}</Dialog.Title>
-        </Dialog.Header>
-        <div class="grid gap-4 py-4">
-            <Input
-                placeholder="Task title"
-                bind:value={formTitle}
-                disabled={!isEditing}
-            />
-            <Textarea
-                placeholder="Task description"
-                bind:value={formDescription}
-                disabled={!isEditing}
-            />
-            <Select value={formCategory}>
-                <SelectTrigger disabled={!isEditing}>
-                    <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                    {#each categories as category}
-                        <SelectItem
-                            value={category.value}
-                            on:click={() => (formCategory = category.value)}
+            <Drawer.Header>
+                <Drawer.Title>Edit Task</Drawer.Title>
+                <Drawer.Description>
+                    Make changes to your task here. Click save when you're done.
+                </Drawer.Description>
+            </Drawer.Header>
+
+            {#if selectedTask}
+                <div class="overflow-y-auto px-4 h-[calc(100%-8rem)]">
+                    <div class="space-y-4">
+                        <!-- Title -->
+                        <div class="space-y-2">
+                            <label for="title" class="text-sm font-medium"
+                                >Title</label
+                            >
+                            <Input
+                                id="title"
+                                bind:value={selectedTask.title}
+                                placeholder="Task title"
+                            />
+                        </div>
+
+                        <!-- Description -->
+                        <div class="space-y-2">
+                            <label for="description" class="text-sm font-medium"
+                                >Description</label
+                            >
+                            <Textarea
+                                id="description"
+                                bind:value={selectedTask.description}
+                                placeholder="Add a more detailed description..."
+                                rows="4"
+                            />
+                        </div>
+
+                        <!-- Category -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Category</label>
+                            <div class="flex gap-2 flex-wrap">
+                                {#each categories as cat}
+                                    <Button
+                                        variant={selectedTask.category ===
+                                        cat.value
+                                            ? "default"
+                                            : "outline"}
+                                        size="sm"
+                                        class={selectedTask.category ===
+                                        cat.value
+                                            ? categoryTextColors[cat.value]
+                                            : ""}
+                                        on:click={() =>
+                                            (selectedTask.category = cat.value)}
+                                    >
+                                        {cat.label}
+                                    </Button>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <!-- Due Date -->
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium">Due Date</label>
+                            <div class="flex gap-2 items-center">
+                                <DateTimePicker
+                                    value={taskDueDate}
+                                    on:change={(e) =>
+                                        handleDateSelect(e.detail)}
+                                    placeholder="Select due date and time"
+                                />
+                                {#if taskDueDate}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        on:click={() =>
+                                            (taskDueDate = undefined)}
+                                    >
+                                        <X class="h-4 w-4" />
+                                    </Button>
+                                {/if}
+                            </div>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="space-y-2 pt-4 border-t">
+                            <h4
+                                class="text-sm font-medium text-muted-foreground"
+                            >
+                                Task Information
+                            </h4>
+                            <div class="space-y-2">
+                                <div
+                                    class="flex items-center gap-2 text-sm text-muted-foreground"
+                                >
+                                    <Calendar class="h-4 w-4" />
+                                    Created: {format(
+                                        new Date(selectedTask.created),
+                                        "PPP",
+                                    )}
+                                </div>
+                                <div
+                                    class="flex items-center gap-2 text-sm text-muted-foreground"
+                                >
+                                    <Clock class="h-4 w-4" />
+                                    Last updated: {format(
+                                        new Date(selectedTask.updated),
+                                        "PPP",
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Drawer.Footer>
+                    <div class="flex w-full justify-between">
+                        <Button
+                            variant="destructive"
+                            class="gap-2"
+                            on:click={() => {
+                                taskToDelete = selectedTask;
+                                showDrawer = false;
+                                showDeleteDialog = true;
+                            }}
                         >
-                            {category.label}
-                        </SelectItem>
-                    {/each}
-                </SelectContent>
-            </Select>
-        </div>
-        <Dialog.Footer class="gap-2">
-            <Button variant="outline" on:click={handleCloseViewDialog}>
-                Close
-            </Button>
-            {#if isEditing}
-                <Button on:click={updateTask}>Save Changes</Button>
-            {:else}
-                <Button
-                    variant="destructive"
-                    on:click={() => (showDeleteDialog = true)}
-                >
-                    <Trash2 class="mr-2 h-4 w-4" />
-                    Delete
-                </Button>
-                <Button on:click={() => (isEditing = true)}>
-                    <Edit class="mr-2 h-4 w-4" />
-                    Edit
-                </Button>
+                            <Trash2 class="h-4 w-4" />
+                            Delete
+                        </Button>
+                        <div class="flex gap-2">
+                            <Drawer.Close>
+                                <Button variant="outline">Cancel</Button>
+                            </Drawer.Close>
+                            <Button
+                                on:click={() => {
+                                    void updateTask(selectedTask, true);
+                                    showDrawer = false;
+                                }}
+                            >
+                                Save changes
+                            </Button>
+                        </div>
+                    </div>
+                </Drawer.Footer>
             {/if}
-        </Dialog.Footer>
-    </Dialog.Content>
-</Dialog.Root>
+        </div>
+    </Drawer.Content>
+</Drawer.Root>
 
 <!-- Delete Confirmation Dialog -->
-<AlertDialog.Root
-    open={showDeleteDialog}
-    onOpenChange={(open) => {
-        if (!open) showDeleteDialog = false;
-    }}
->
+<AlertDialog.Root bind:open={showDeleteDialog}>
     <AlertDialog.Content>
         <AlertDialog.Header>
-            <AlertDialog.Title>Are you sure?</AlertDialog.Title>
+            <AlertDialog.Title>Delete Task</AlertDialog.Title>
             <AlertDialog.Description>
-                This action cannot be undone. This will permanently delete the
-                task.
+                Are you sure you want to delete this task? This action cannot be
+                undone.
             </AlertDialog.Description>
         </AlertDialog.Header>
         <AlertDialog.Footer>
-            <AlertDialog.Cancel on:click={() => (showDeleteDialog = false)}>
-                Cancel
-            </AlertDialog.Cancel>
+            <AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
             <AlertDialog.Action
-                on:click={deleteTask}
+                on:click={() => void deleteTask()}
                 class="bg-destructive text-destructive-foreground"
             >
                 Delete
