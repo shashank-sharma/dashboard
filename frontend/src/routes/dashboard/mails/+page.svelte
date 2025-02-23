@@ -1,20 +1,23 @@
-<!-- src/routes/mail/+page.svelte -->
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { mailStore } from "$lib/stores/mailStore";
-    import { mailMessagesStore } from "$lib/stores/mailMessagesStore";
-    import MailAuth from "$lib/components/mail/MailAuth.svelte";
-    import MailTable from "$lib/components/mail/MailTable.svelte";
-    import MailDetail from "$lib/components/mail/MailDetail.svelte";
+    import { onMount, onDestroy } from "svelte";
+    import { MailAuth, MailTable, MailDetail } from "$lib/features/mail";
+    import { mailStore, mailMessagesStore } from "$lib/features/mail";
 
     let isInitializing = true;
 
     onMount(async () => {
         try {
-            await mailStore.checkStatus();
+            await mailStore.checkStatus(true); // Force initial check
+            mailStore.subscribeToChanges();
+        } catch (error) {
+            console.error("Failed to initialize mail:", error);
         } finally {
             isInitializing = false;
         }
+    });
+
+    onDestroy(() => {
+        mailStore.unsubscribe();
     });
 </script>
 

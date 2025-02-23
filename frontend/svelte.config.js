@@ -11,6 +11,12 @@ const config = {
             precompress: false,
             strict: true
         }),
+        alias: {
+            $components: 'src/lib/components',
+            $stores: 'src/lib/stores',
+            $services: 'src/lib/services',
+            $types: 'src/lib/types'
+        },
         paths: {
             base: process.env.NODE_ENV === 'production' ? '/dashboard/frontend' : ''
         }

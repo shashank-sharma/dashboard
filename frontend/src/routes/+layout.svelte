@@ -1,11 +1,17 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, setContext } from "svelte";
     import { navigating } from "$app/stores";
     import { Toaster } from "$lib/components/ui/sonner";
     import { fade } from "svelte/transition";
     import Loading from "$lib/components/Loading.svelte";
+    import { theme } from "$lib/stores/theme.store";
     import "../app.css";
     let isLoading = true;
+
+    setContext("theme", {
+        theme,
+        toggleTheme: theme.toggleTheme,
+    });
 
     onMount(async () => {
         setTimeout(() => {

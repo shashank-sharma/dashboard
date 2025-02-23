@@ -1,5 +1,5 @@
 <script lang="ts">
-    import NotebooksContent from "$lib/components/sections/NotebooksContent.svelte";
+    import { NotebookList } from "$lib/features/notebooks/components";
 </script>
 
-<NotebooksContent />
+<NotebookList />

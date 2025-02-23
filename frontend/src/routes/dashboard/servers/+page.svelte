@@ -1,5 +1,5 @@
 <script lang="ts">
-    import ServersContent from "$lib/components/sections/ServersContent.svelte";
+    import { ServerList } from "$lib/features/servers/components";
 </script>
 
-<ServersContent />
+<ServerList />

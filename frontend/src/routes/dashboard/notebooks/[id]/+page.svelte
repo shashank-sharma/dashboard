@@ -1,8 +1,8 @@
 <script lang="ts">
     import { page } from "$app/stores";
-    import NotebookComponent from "$lib/components/sections/NotebookComponent.svelte";
+    import { NotebookEditor } from "$lib/features/notebooks/components";
 
     $: notebookId = $page.params.id;
 </script>
 
-<NotebookComponent id={notebookId} />
+<NotebookEditor id={notebookId} />

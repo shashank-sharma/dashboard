@@ -1,5 +1,7 @@
 <script lang="ts">
-    import TasksContent from "$lib/components/sections/TasksContent.svelte";
+    import TaskList from "$lib/features/tasks/components/TaskList.svelte";
 </script>
 
-<TasksContent />
+<div class="container mx-auto p-4">
+    <TaskList />
+</div>

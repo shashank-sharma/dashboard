@@ -3,6 +3,26 @@ import { twMerge } from "tailwind-merge";
 import { cubicOut } from "svelte/easing";
 import type { TransitionConfig } from "svelte/transition";
  
+export function formatDate(date: string): string {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+export function getPriorityColor(priority: string): string {
+    switch (priority) {
+        case 'urgent': return 'text-red-500 dark:text-red-400';
+        case 'high': return 'text-orange-500 dark:text-orange-400';
+        case 'medium': return 'text-yellow-500 dark:text-yellow-400';
+        case 'low': return 'text-blue-500 dark:text-blue-400';
+        default: return 'text-foreground';
+    }
+}
+
 export function cn(...inputs: ClassValue[]) {
  return twMerge(clsx(inputs));
 }

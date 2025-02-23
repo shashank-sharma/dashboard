@@ -1,5 +1,5 @@
 <script lang="ts">
-    import TokensContent from "$lib/components/sections/TokensContent.svelte";
+    import TokenList from "$lib/features/tokens/components/TokenList.svelte";
 </script>
 
-<TokensContent />
+<TokenList />

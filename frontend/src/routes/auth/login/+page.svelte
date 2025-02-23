@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { currentUser, pb } from "$lib/pocketbase";
+	import {
+		currentUser,
+		login,
+		authIsValid,
+		logout,
+	} from "$lib/services/authService";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import {
@@ -18,7 +23,7 @@
 
 	onMount(() => {
 		// Check if user is already logged in
-		if (pb.authStore.isValid) {
+		if (authIsValid()) {
 			goto("/dashboard"); // or wherever your home page is
 		}
 	});
@@ -28,43 +33,18 @@
 	let isLoading: boolean = false;
 	let error: string | null = null;
 
-	async function login() {
+	async function handleLogin() {
 		if (isLoading) return;
 		isLoading = true;
 		error = null;
 		try {
-			await pb.collection("users").authWithPassword(username, password);
+			await login(username, password);
+			goto("/dashboard");
 		} catch (err) {
-			console.error(err);
-			error = "Invalid username or password";
+			error = (err as Error).message;
 		} finally {
 			isLoading = false;
 		}
-	}
-
-	async function signUp() {
-		if (isLoading) return;
-		isLoading = true;
-		error = null;
-		try {
-			const data = {
-				username,
-				password,
-				passwordConfirm: password,
-				name: username,
-			};
-			await pb.collection("users").create(data);
-			await login();
-		} catch (err) {
-			console.error(err);
-			error = "Error creating account. Username might be taken.";
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	function signOut() {
-		pb.authStore.clear();
 	}
 </script>
 
@@ -78,7 +58,7 @@
 				<CardDescription>You are currently signed in.</CardDescription>
 			</CardHeader>
 			<CardFooter>
-				<Button on:click={signOut} variant="outline" class="w-full"
+				<Button on:click={logout} variant="outline" class="w-full"
 					>Sign Out</Button
 				>
 			</CardFooter>
@@ -120,17 +100,7 @@
 				{/if}
 			</CardContent>
 			<CardFooter class="flex justify-between">
-				<Button
-					on:click={signUp}
-					variant="outline"
-					disabled={isLoading}
-				>
-					{#if isLoading}
-						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-					{/if}
-					Sign Up
-				</Button>
-				<Button on:click={login} disabled={isLoading}>
+				<Button on:click={handleLogin} disabled={isLoading}>
 					{#if isLoading}
 						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 					{/if}
