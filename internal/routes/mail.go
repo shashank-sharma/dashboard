@@ -22,38 +22,6 @@ type MailAuthData struct {
 
 // MailAuthHandler initiates the OAuth flow for Gmail
 func MailAuthHandler(ms *mail.MailService, e *core.RequestEvent) error {
-	mailSync := &models.MailSync{
-		User:     "szjtahswmje4jya",
-		Token:    "dyp18aoa7clk7ex",
-		Provider: "random",
-		Labels:   "",
-		IsActive: true,
-	}
-
-	if err := query.UpsertRecord[*models.MailSync](mailSync, map[string]interface{}{
-		"user":     "szjtahswmje4jya",
-		"provider": "random",
-	}); err != nil {
-		return e.JSON(http.StatusOK, map[string]interface{}{
-			"url": "Error",
-		})
-	}
-
-	mailToken := &models.Token{
-		User:     "szjtahswmje4jya",
-		Provider: "random",
-		Account:  "shashank.sharma98@gmail.com",
-		IsActive: true,
-	}
-
-	if err := query.UpsertRecord[*models.Token](mailToken, map[string]interface{}{
-		"provider": "random",
-		"account":  "shashank.sharma98@gmail.com",
-	}); err != nil {
-		return e.JSON(http.StatusForbidden, map[string]interface{}{
-			"message": "Error saving token",
-		})
-	}
 	return e.JSON(http.StatusOK, map[string]interface{}{
 		"url": ms.GetAuthUrl(),
 	})
@@ -219,6 +187,7 @@ func MailSyncStatusHandler(ms *mail.MailService, e *core.RequestEvent) error {
 	}
 
 	return e.JSON(http.StatusOK, map[string]interface{}{
+		"id":            mailSync.Id,
 		"status":        mailSync.SyncStatus,
 		"last_synced":   mailSync.LastSynced,
 		"message_count": messageCount,

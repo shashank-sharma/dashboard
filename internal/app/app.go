@@ -108,7 +108,7 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 		return routes.MailAuthHandler(app.MailService, e)
 	})
 
-	e.Router.POST("/auth/mail/callback", func(e *core.RequestEvent) error {
+	e.Router.POST("/api/mail/auth/callback", func(e *core.RequestEvent) error {
 		return routes.MailAuthCallback(app.MailService, e)
 	})
 

@@ -16,7 +16,6 @@ type Model interface {
 }
 
 type BaseModel struct {
-	Model
 	lastSavedPK string
 
 	Id      string         `db:"id" json:"id" form:"id" xml:"id"`
