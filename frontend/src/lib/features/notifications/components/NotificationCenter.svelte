@@ -10,16 +10,21 @@
     import { onMount, onDestroy } from "svelte";
     import { formatDistanceToNow } from "date-fns";
     import { getPriorityColor } from "$lib/utils";
+    import { browser } from "$app/environment";
 
     let isOpen = false;
 
     onMount(() => {
         notificationStore.fetchNotifications();
-        document.addEventListener("click", handleClickOutside);
+        if (browser) {
+            document.addEventListener("click", handleClickOutside);
+        }
     });
 
     onDestroy(() => {
-        document.removeEventListener("click", handleClickOutside);
+        if (browser) {
+            document.removeEventListener("click", handleClickOutside);
+        }
     });
 
     function handleNotificationClick(notification: Notification) {
@@ -30,6 +35,8 @@
     }
 
     function handleClickOutside(event: MouseEvent) {
+        if (!browser) return;
+
         const notificationElement = document.getElementById(
             "notification-center",
         );

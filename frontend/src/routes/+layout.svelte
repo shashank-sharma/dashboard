@@ -6,6 +6,7 @@
     import Loading from "$lib/components/Loading.svelte";
     import { theme } from "$lib/stores/theme.store";
     import "../app.css";
+    import ThemeInitializer from "$lib/components/ThemeInitializer.svelte";
     let isLoading = true;
 
     setContext("theme", {
@@ -19,6 +20,8 @@
         }, 500);
     });
 </script>
+
+<ThemeInitializer />
 
 {#if isLoading || $navigating}
     <Loading />

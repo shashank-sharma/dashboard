@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { browser } from "$app/environment";
     import * as Command from "$lib/components/ui/command";
     import { goto } from "$app/navigation";
     import {
@@ -37,6 +38,8 @@
     }
 
     onMount(() => {
+        if (!browser) return;
+
         function handleKeydown(e: KeyboardEvent) {
             if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();

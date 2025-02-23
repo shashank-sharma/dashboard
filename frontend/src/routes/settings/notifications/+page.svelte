@@ -1,14 +1,12 @@
 <!-- src/routes/settings/notifications/+page.svelte -->
 <script lang="ts">
     import { onMount } from "svelte";
-    import { pb } from "$lib/pocketbase";
-    import { notificationStore } from "$lib/stores/notificationStore";
+    import { pb } from "$lib/config/pocketbase";
     import { Button } from "$lib/components/ui/button";
     import { Label } from "$lib/components/ui/label";
     import { Switch } from "$lib/components/ui/switch";
     import { Input } from "$lib/components/ui/input";
     import * as Select from "$lib/components/ui/select";
-    import * as RadioGroup from "$lib/components/ui/radio-group";
     import { Separator } from "$lib/components/ui/separator";
     import { Card } from "$lib/components/ui/card";
     import { toast } from "svelte-sonner";

@@ -1,6 +1,6 @@
 <!-- src/routes/settings/privacy/+page.svelte -->
 <script lang="ts">
-    import { pb } from "$lib/pocketbase";
+    import { pb } from "$lib/config/pocketbase";
     import { Switch } from "$lib/components/ui/switch";
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";

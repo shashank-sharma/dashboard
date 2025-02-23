@@ -1,6 +1,6 @@
 <!-- src/routes/settings/appearance/+page.svelte -->
 <script lang="ts">
-    import { pb } from "$lib/pocketbase";
+    import { pb } from "$lib/config/pocketbase";
     import { Button } from "$lib/components/ui/button";
     import { Label } from "$lib/components/ui/label";
     import * as RadioGroup from "$lib/components/ui/radio-group";
