@@ -61,12 +61,83 @@ type PublicTrackDeviceAPI struct {
 	Devices      []PublicDeviceData `json:"devices"`
 }
 
+type TrackFocusAPI struct {
+	User      string                  `db:"user" json:"user"`
+	Device    string                  `db:"device" json:"device"`
+	Tags      types.JSONArray[string] `db:"tags" json:"tags"`
+	Metadata  string                  `db:"metadata" json:"metadata"`
+	BeginDate types.DateTime          `db:"begin_date" json:"begin_date"`
+	EndDate   types.DateTime          `db:"end_date" json:"end_date"`
+}
+
+
+func RegisterTrackRoutes(e *core.ServeEvent) {
+	logger.LogDebug("Routes registered")
+	e.Router.POST("/api/track/create", TrackCreateAppItems)
+	e.Router.POST("/api/track", TrackDeviceStatus)
+	e.Router.GET("/api/track/getapp", GetCurrentApp)
+	e.Router.POST("/api/focus/create", TrackFocus)
+	e.Router.POST("/api/sync/create", TrackAppSyncItems)
+	// e.Router.POST("/sync/track-items", routes.TrackAppItems)
+}
+
+func TrackFocus(e *core.RequestEvent) error {
+	token := e.Request.Header.Get("AuthSyncToken")
+	if token == "" {
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Dev Token missing"})
+	}
+	userId, err := query.ValidateDevToken(token)
+	if err != nil {
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
+	}
+	data := TrackFocusAPI{}
+	if err := e.BindBody(&data); err != nil {
+		logger.LogError("Error in parsing =", err)
+		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
+	}
+
+	_, err = query.FindByFilter[*models.TrackFocus](map[string]interface{}{
+		"user":       userId,
+		"device":     data.Device,
+		"tags":       data.Tags,
+		"metadata":   data.Metadata,
+		"begin_date": data.BeginDate,
+		"end_date":   data.EndDate,
+	})
+
+	if err == nil {
+		logger.LogError("Found record, need to skip")
+	}
+
+	trackFocus := &models.TrackFocus{
+		User:      userId,
+		Device:    data.Device,
+		Tags:      data.Tags,
+		Metadata:  data.Metadata,
+		BeginDate: data.BeginDate,
+		EndDate:   data.EndDate,
+	}
+
+	err = query.UpsertRecord[*models.TrackFocus](trackFocus, map[string]interface{}{
+		"user":       userId,
+		"device":     data.Device,
+		"tags":       data.Tags,
+		"metadata":   data.Metadata,
+		"begin_date": data.BeginDate,
+	})
+	if err != nil {
+		logger.LogError("Failed updating record", err)
+	}
+	return e.JSON(http.StatusOK, map[string]interface{}{"message": "Created successfully"})
+}
+
+
 func GetCurrentApp(e *core.RequestEvent) error {
 	activeDevices, err := query.FindAllByFilter[*models.TrackDevice](map[string]interface{}{
 		"is_active": true,
 	})
 	if err != nil {
-		logger.Error.Println("Failed getting devices: ", err)
+		logger.LogError("Failed getting devices: ", err)
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch devices"})
 	}
 
@@ -106,9 +177,9 @@ func GetCurrentApp(e *core.RequestEvent) error {
 }
 
 func TrackCreateAppItems(e *core.RequestEvent) error {
-	logger.Debug.Println("Started track create")
+	logger.LogDebug("Started track create")
 	token := e.Request.Header.Get("Authorization")
-	logger.Debug.Println("token =", token)
+	logger.LogDebug("token =", token)
 	userId, err := util.GetUserId(token)
 	if err != nil {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed to fetch id, token misconfigured"})
@@ -117,7 +188,7 @@ func TrackCreateAppItems(e *core.RequestEvent) error {
 	data := &models.TrackDeviceAPI{}
 
 	if err := e.BindBody(data); err != nil || data.Name == "" {
-		logger.Error.Println("Error in parsing =", err)
+		logger.LogError("Error in parsing =", err)
 		return apis.NewBadRequestError("Failed to read request data", err)
 	}
 
@@ -130,7 +201,7 @@ func TrackCreateAppItems(e *core.RequestEvent) error {
 	})
 
 	if record != nil {
-		logger.Debug.Println("returning id:", record.Id)
+		logger.LogDebug("returning id:", record.Id)
 		return e.JSON(http.StatusOK, map[string]interface{}{"id": record.Id})
 	} else {
 		trackDevice := &models.TrackDevice{
@@ -146,11 +217,11 @@ func TrackCreateAppItems(e *core.RequestEvent) error {
 		trackDevice.Id = util.GenerateRandomId()
 
 		if err := query.SaveRecord(trackDevice); err != nil {
-			logger.Error.Println("Error saving file", err)
+			logger.LogError("Error saving file", err)
 			return err
 		}
 
-		logger.Debug.Println("Track device ID: ", trackDevice.Id)
+		logger.LogDebug("Track device ID: ", trackDevice.Id)
 		return e.JSON(http.StatusOK, map[string]interface{}{"id": trackDevice.Id})
 	}
 
@@ -167,7 +238,7 @@ func TrackAppSyncItems(e *core.RequestEvent) error {
 	}
 	data := EventListAPI{}
 	if err := e.BindBody(&data); err != nil {
-		logger.Error.Println("Error in parsing =", err)
+		logger.LogError("Error in parsing =", err)
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Failed binding data"})
 	}
 
@@ -218,7 +289,7 @@ func TrackAppSyncItems(e *core.RequestEvent) error {
 		})
 		if err != nil {
 			op.FailedCount += 1
-			logger.Error.Println("Failed updating record for event:", event, err)
+			logger.LogError("Failed updating record for event:", event, err)
 		} else {
 			op.CreateCount += 1
 		}
@@ -231,7 +302,7 @@ func TrackAppSyncItems(e *core.RequestEvent) error {
 		"last_online": types.NowDateTime(),
 		"last_sync":   types.NowDateTime(),
 	}); err != nil {
-		logger.Error.Println("Failed updating the tracking device records")
+		logger.LogError("Failed updating the tracking device records")
 	}
 
 	return e.JSON(http.StatusOK, op)

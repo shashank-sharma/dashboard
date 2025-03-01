@@ -19,13 +19,13 @@ func TrackDevices(app *pocketbase.PocketBase) error {
 	})
 
 	if err != nil {
-		logger.Error.Println("No queries found")
+		logger.LogError("No queries found")
 	}
 	for _, activeDevice := range activeDevices {
 		if err = query.UpdateRecord[*models.TrackDevice](activeDevice.Id, map[string]interface{}{
 			"is_online": false,
 		}); err != nil {
-			logger.Error.Println("Failed updating the tracking device records")
+			logger.LogError("Failed updating the tracking device records")
 		}
 	}
 	return nil

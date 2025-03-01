@@ -34,8 +34,5 @@ func GetUserId(tokenString string) (string, error) {
 		return "", err
 	}
 
-	// Access the claims
-	logger.Debug.Println("User ID:", claims["id"])
-	logger.Debug.Println("Username:", claims["username"])
 	return claims["id"].(string), nil
 }

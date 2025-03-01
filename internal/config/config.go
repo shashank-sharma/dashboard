@@ -8,6 +8,8 @@ import (
 	"github.com/pocketbase/pocketbase"
 )
 
+var EnableMetricsFlag bool
+
 func getEnv(key string, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -23,4 +25,6 @@ func Init(pb *pocketbase.PocketBase) {
 	}
 
 	pb.Store().Set("ENCRYPTION_KEY", getEnv("ENCRYPTION_KEY", "default_encryption_key"))
+	pb.Store().Set("METRICS_ENABLED", EnableMetricsFlag)
+	pb.Store().Set("METRICS_PORT", getEnv("METRICS_PORT", "9091"))
 }

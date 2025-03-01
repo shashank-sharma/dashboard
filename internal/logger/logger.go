@@ -92,6 +92,21 @@ func formatKeyValuePairs(args ...interface{}) string {
 	return builder.String()
 }
 
+// LogDebug logs with the DEBUG level and correct caller information
+// Handles key-value pairs in the format: LogInfo("message", "key1", value1, "key2", value2)
+func LogDebug(message string, args ...interface{}) {
+	if appLogger != nil {
+		appLogger.Debug(message, args...)
+	}
+
+	callerInfo := getCallerInfo(1)
+	if len(args) > 0 {
+		Debug.Println(callerInfo + ": " + message + " " + formatKeyValuePairs(args...))
+	} else {
+		Debug.Println(callerInfo + ": " + message)
+	}
+}
+
 // LogInfo logs with the INFO level and correct caller information
 // Handles key-value pairs in the format: LogInfo("message", "key1", value1, "key2", value2)
 func LogInfo(message string, args ...interface{}) {

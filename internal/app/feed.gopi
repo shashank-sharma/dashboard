@@ -1,0 +1,82 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/shashank-sharma/backend/internal/config"
+	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/routes"
+	"github.com/shashank-sharma/backend/internal/services"
+	"github.com/shashank-sharma/backend/internal/services/ai"
+	"github.com/shashank-sharma/backend/internal/services/feed"
+	"github.com/shashank-sharma/backend/internal/services/providers"
+)
+
+var feedService services.FeedService
+
+func (app *Application) InitializeFeedSystem() {
+	aiConfig := config.GetAIConfig()
+	var aiClient ai.AIClient
+	
+	if aiConfig.Service != config.AIServiceNone {
+		var err error
+		aiClient, err = ai.NewAIClient(aiConfig)
+		if err != nil {
+			logger.LogError("Failed to initialize AI client: " + err.Error())
+			logger.LogInfo("Continuing without AI functionality")
+		}
+		logger.LogInfo("AI client initialized")
+	}
+	
+	processor := feed.NewFeedProcessor(aiClient)
+
+	feedService = feed.NewFeedService(processor)
+
+	feedService.RegisterProvider(providers.NewRSSProvider())
+	feedService.RegisterProvider(providers.NewHackerNewsProvider())
+
+	logger.LogInfo("Starting feed update job")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	if err := feedService.ProcessNewItems(ctx); err != nil {
+		logger.LogError(fmt.Sprintf("Error processing feed items: %v", err))
+	}
+
+	logger.LogInfo("Feed update job completed")
+
+	// cronjobs.FeedUpdateJob(app.Pb, feedService)
+	// Add feed update cronjob
+	// app.Pb.Cron().MustAdd("feed-update", "*/30 * * * *", func() {
+	// 	cronjobs.FeedUpdateJob(app.Pb, feedService)
+	// })
+}
+
+func (app *Application) ConfigureFeedRoutes(e *core.ServeEvent) {
+	routes.RegisterFeedRoutes(e, feedService)
+}
+
+func (app *Application) AddFeedToApplication(e *core.ServeEvent) {
+	logger.LogInfo("Adding feed")
+	app.InitializeFeedSystem()
+
+	app.ConfigureFeedRoutes(e)
+}
+
+// AddCronJob is a helper method to add a cron job to the application
+/*
+func (app *Application) AddCronJob(name, interval string, jobFunc func()) {
+	// This assumes you have a similar cronJob structure in your application
+	// Adapt this to match your actual cron job implementation
+	app.cronJobs = append(app.cronJobs, cronjobs.CronJob{
+		Name:     name,
+		Interval: interval,
+		JobFunc:  jobFunc,
+		IsActive: true,
+	})
+}
+*/

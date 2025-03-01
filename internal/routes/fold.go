@@ -24,6 +24,21 @@ type FoldVerifyOtpAPI struct {
 	Otp         string `json:"otp"`
 }
 
+func RegisterFoldRoutes(e *core.ServeEvent, foldService *fold.FoldService) {
+	e.Router.POST("/api/fold/getotp", func(e *core.RequestEvent) error {
+		return FoldGetOtpHandler(foldService, e)
+	})
+	e.Router.POST("/api/fold/verifyotp", func(e *core.RequestEvent) error {
+		return FoldVerifyOtpHandler(foldService, e)
+	})
+	e.Router.GET("/api/fold/refresh", func(e *core.RequestEvent) error {
+		return FoldRefreshTokenHandler(foldService, e)
+	})
+	e.Router.GET("/api/fold/user", func(e *core.RequestEvent) error {
+		return FoldUserHandler(foldService, e)
+	})
+}
+
 func FoldGetOtpHandler(fs *fold.FoldService, e *core.RequestEvent) error {
 	pbToken := e.Request.Header.Get("Authorization")
 	userId, _ := util.GetUserId(pbToken)

@@ -2,7 +2,6 @@ package query
 
 import (
 	"github.com/pocketbase/dbx"
-	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/store"
 	"github.com/shashank-sharma/backend/internal/util"
@@ -21,7 +20,6 @@ func FindById[T models.Model](id string) (T, error) {
 		One(&m)
 
 	if err != nil {
-		logger.Debug.Println(err)
 		var zeroValue T
 		return zeroValue, err
 	}
@@ -129,6 +127,35 @@ func FindAllByFilter[T models.Model](filterStruct map[string]interface{}) ([]T, 
 	}
 
 	err := query.All(&results)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func FindAllByFilterWithPagination[T models.Model](filterStruct map[string]interface{}, limit int, offset int) ([]T, error) {
+	var results []T
+
+	var m T
+	query := BaseModelQuery(m)
+
+	for field, value := range filterStruct {
+		switch v := value.(type) {
+		case map[string]interface{}:
+			for op, actualVal := range v {
+				if op == "gte" {
+					query = query.AndWhere(dbx.NewExp(field+" >= {:"+field+"}", dbx.Params{field: actualVal}))
+				} else if op == "lte" {
+					query = query.AndWhere(dbx.NewExp(field+" <= {:"+field+"}", dbx.Params{field: actualVal}))
+				}
+			}
+		default:
+			query = query.AndWhere(dbx.HashExp{field: value})
+		}
+	}
+
+	err := query.Limit(int64(limit)).Offset(int64(offset)).All(&results)
 	if err != nil {
 		return nil, err
 	}

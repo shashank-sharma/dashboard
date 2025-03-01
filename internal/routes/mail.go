@@ -20,6 +20,25 @@ type MailAuthData struct {
 	Provider string `json:"provider"`
 }
 
+func RegisterMailRoutes(e *core.ServeEvent, mailService *mail.MailService) {
+	// Mail
+	e.Router.GET("/auth/mail/redirect", func(e *core.RequestEvent) error {
+		return MailAuthHandler(mailService, e)
+	})
+
+	e.Router.POST("/api/mail/auth/callback", func(e *core.RequestEvent) error {
+		return MailAuthCallback(mailService, e)
+	})
+
+	e.Router.POST("/api/mail/sync", func(e *core.RequestEvent) error {
+		return MailSyncHandler(mailService, e)
+	})
+
+	e.Router.GET("/api/mail/sync/status", func(e *core.RequestEvent) error {
+		return MailSyncStatusHandler(mailService, e)
+	})
+}
+
 // MailAuthHandler initiates the OAuth flow for Gmail
 func MailAuthHandler(ms *mail.MailService, e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, map[string]interface{}{
@@ -50,8 +69,6 @@ func MailAuthCallback(ms *mail.MailService, e *core.RequestEvent) error {
 		})
 	}
 
-	logger.Debug.Println("Found token: ", token)
-
 	client := googleConfig.Client(context.Background(), token)
 	userInfo, err := oauth.FetchUserInfo(client)
 	if err != nil {
@@ -75,8 +92,6 @@ func MailAuthCallback(ms *mail.MailService, e *core.RequestEvent) error {
 		IsActive:     true,
 	}
 
-	logger.Debug.Println("Set refresh token: ", token.RefreshToken)
-
 	if err := query.UpsertRecord[*models.Token](mailToken, map[string]interface{}{
 		"provider": "gmail",
 		"account":  userInfo.Email,
@@ -85,8 +100,6 @@ func MailAuthCallback(ms *mail.MailService, e *core.RequestEvent) error {
 			"message": "Error saving token",
 		})
 	}
-
-	logger.Debug.Println("Token id: ", mailToken.Id)
 
 	_, err = ms.InitializeLabels(mailToken.Id, userId)
 	if err != nil {

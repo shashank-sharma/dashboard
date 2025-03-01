@@ -5,17 +5,14 @@ import (
 
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
 )
 
 func TrackDeviceStatus(e *core.RequestEvent) error {
-	logger.Debug.Println("Started track")
 	data := &models.TrackDeviceUpdateAPI{}
 
 	if err := e.BindBody(data); err != nil || data.UserId == "" || data.Token == "" || data.ProductId == "" {
-		logger.Debug.Println("Error in parsing =", err)
 		// TODO: Simply say unauthorized
 		return apis.NewBadRequestError("Failed to read request data", err)
 	}
@@ -24,8 +21,6 @@ func TrackDeviceStatus(e *core.RequestEvent) error {
 		"user":  data.UserId,
 		"token": data.Token,
 	})
-
-	logger.Debug.Println("Found token record: ", record)
 
 	if err != nil || record == nil {
 		return e.JSON(http.StatusForbidden, map[string]interface{}{"message": "Not authorized"})

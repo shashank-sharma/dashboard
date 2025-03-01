@@ -15,10 +15,16 @@ import (
 	"github.com/shashank-sharma/backend/internal/config"
 	"github.com/shashank-sharma/backend/internal/cronjobs"
 	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/shashank-sharma/backend/internal/metrics"
 	"github.com/shashank-sharma/backend/internal/routes"
+	"github.com/shashank-sharma/backend/internal/services"
+	"github.com/shashank-sharma/backend/internal/services/ai"
 	"github.com/shashank-sharma/backend/internal/services/calendar"
+	"github.com/shashank-sharma/backend/internal/services/feed"
 	"github.com/shashank-sharma/backend/internal/services/fold"
 	"github.com/shashank-sharma/backend/internal/services/mail"
+	"github.com/shashank-sharma/backend/internal/services/providers"
+	"github.com/shashank-sharma/backend/internal/services/workflow"
 	"github.com/shashank-sharma/backend/internal/store"
 )
 
@@ -28,6 +34,8 @@ type Application struct {
 	FoldService     *fold.FoldService
 	CalendarService *calendar.CalendarService
 	MailService     *mail.MailService
+	WorkflowEngine  *workflow.WorkflowEngine
+	FeedService     *services.FeedService
 }
 
 func defaultPublicDir() string {
@@ -40,15 +48,6 @@ func defaultPublicDir() string {
 
 func New() *Application {
 	pb := pocketbase.New()
-	var publicDirFlag string
-
-	pb.RootCmd.PersistentFlags().StringVar(
-		&publicDirFlag,
-		"publicDir",
-		defaultPublicDir(),
-		"the directory to serve static files",
-	)
-
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Failed to load environment variables")
@@ -58,12 +57,36 @@ func New() *Application {
 	foldService := fold.NewFoldService("https://api.fold.money/api")
 	calendarService := calendar.NewCalendarService()
 	mailService := mail.NewMailService()
+	workflowEngine := workflow.NewWorkflowEngine(pb)
+
+	aiConfig := config.GetAIConfig()
+	var aiClient ai.AIClient
+	
+	if aiConfig.Service != config.AIServiceNone {
+		var err error
+		aiClient, err = ai.NewAIClient(aiConfig)
+		if err != nil {
+			logger.LogError("Failed to initialize AI client: " + err.Error())
+			logger.LogInfo("Continuing without AI functionality")
+		}
+		logger.LogInfo("AI client initialized")
+	}
+	
+	// Initialize the feed processor with AI client
+	processor := feed.NewFeedProcessor(aiClient)
+	feedService := feed.NewFeedService(processor)
+
+	// Register feed source providers
+	feedService.RegisterProvider(providers.NewRSSProvider())
+	feedService.RegisterProvider(providers.NewHackerNewsProvider())
 
 	app := &Application{
 		Pb:              pb,
 		FoldService:     foldService,
 		CalendarService: calendarService,
 		MailService:     mailService,
+		WorkflowEngine:  workflowEngine,
+		FeedService: &feedService,
 	}
 
 	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
@@ -72,67 +95,29 @@ func New() *Application {
 		logger.RegisterApp(pb)
 		store.InitApp(pb)
 		config.Init(app.Pb)
+		metrics.RegisterPrometheusMetrics(pb)		
 		app.InitCronjobs()
 		app.configureRoutes(e)
+
+		if err := metrics.StartMetricsServer(app.Pb); err != nil {
+			logger.LogError("Failed to start metrics server", "error", err)
+		}
 
 		return e.Next()
 	})
 
 	app.registerHooks()
-
 	return app
 }
 
 func (app *Application) configureRoutes(e *core.ServeEvent) {
-	e.Router.GET("/api/token", routes.AuthGenerateDevToken)
-	e.Router.POST("/api/track/create", routes.TrackCreateAppItems)
-	e.Router.POST("/api/track", routes.TrackDeviceStatus)
-	e.Router.GET("/api/track/getapp", routes.GetCurrentApp)
-	e.Router.POST("/api/sync/create", routes.TrackAppSyncItems)
-	e.Router.POST("/api/focus/create", routes.TrackFocus)
-	// e.Router.POST("/sync/track-items", routes.TrackAppItems)
-
-	// Calendar
-	e.Router.GET("/auth/calendar/redirect", func(e *core.RequestEvent) error {
-		return routes.CalendarAuthHandler(app.CalendarService, e)
-	})
-	e.Router.POST("/auth/calendar/callback", func(e *core.RequestEvent) error {
-		return routes.CalendarAuthCallback(app.CalendarService, e)
-	})
-	e.Router.POST("/api/calendar/sync", func(e *core.RequestEvent) error {
-		return routes.CalendarSyncHandler(app.CalendarService, e)
-	})
-
-	// Mail
-	e.Router.GET("/auth/mail/redirect", func(e *core.RequestEvent) error {
-		return routes.MailAuthHandler(app.MailService, e)
-	})
-
-	e.Router.POST("/api/mail/auth/callback", func(e *core.RequestEvent) error {
-		return routes.MailAuthCallback(app.MailService, e)
-	})
-
-	e.Router.POST("/api/mail/sync", func(e *core.RequestEvent) error {
-		return routes.MailSyncHandler(app.MailService, e)
-	})
-
-	e.Router.GET("/api/mail/sync/status", func(e *core.RequestEvent) error {
-		return routes.MailSyncStatusHandler(app.MailService, e)
-	})
-
-	// Money
-	e.Router.POST("/api/fold/getotp", func(e *core.RequestEvent) error {
-		return routes.FoldGetOtpHandler(app.FoldService, e)
-	})
-	e.Router.POST("/api/fold/verifyotp", func(e *core.RequestEvent) error {
-		return routes.FoldVerifyOtpHandler(app.FoldService, e)
-	})
-	e.Router.GET("/api/fold/refresh", func(e *core.RequestEvent) error {
-		return routes.FoldRefreshTokenHandler(app.FoldService, e)
-	})
-	e.Router.GET("/api/fold/user", func(e *core.RequestEvent) error {
-		return routes.FoldUserHandler(app.FoldService, e)
-	})
+	routes.RegisterWorkflowRoutes(e, app.WorkflowEngine)
+	routes.RegisterFeedRoutes(e, *app.FeedService)
+	routes.RegisterCredentialRoutes(e)
+	routes.RegisterTrackRoutes(e)
+	routes.RegisterCalendarRoutes(e, app.CalendarService)
+	routes.RegisterMailRoutes(e, app.MailService)
+	routes.RegisterFoldRoutes(e, app.FoldService)
 }
 
 func (app *Application) InitCronjobs() error {
@@ -156,6 +141,12 @@ func (app *Application) Start() error {
 	// register system commands
 	app.Pb.RootCmd.AddCommand(cmd.NewSuperuserCommand(app.Pb))
 	app.Pb.RootCmd.AddCommand(cmd.NewServeCommand(app.Pb, true))
+	app.Pb.RootCmd.PersistentFlags().BoolVar(
+		&config.EnableMetricsFlag,
+		"metrics",
+		false,
+		"enable Prometheus metrics collection",
+	)
 
 	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())
 	logger.Debug.Println("isGoRun:", isGoRun)
