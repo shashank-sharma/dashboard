@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -39,6 +40,8 @@ var (
 			return new(strings.Builder)
 		},
 	}
+
+	logFile *os.File
 )
 
 // getCallerInfo returns file:line from the caller's perspective
@@ -154,15 +157,57 @@ func LogWarning(message string, args ...interface{}) {
 
 // RegisterApp registers the pocketbase app for logging
 func RegisterApp(app *pocketbase.PocketBase) {
-	appLogger = app.Logger()
+
 }
 
-func init() {
-	Debug.SetOutput(os.Stdout)
-	Info.SetOutput(os.Stdout)
-	Warning.SetOutput(os.Stdout)
-	Error.SetOutput(os.Stderr)
-	Fatal.SetOutput(os.Stderr)
+// Cleanup closes the log file if it's open
+func Cleanup() {
+	if logFile != nil {
+		logFile.Close()
+	}
+}
 
-	Debug.Println(getCallerInfo(0) + ": Initialized Logger")
+func InitLog(app *pocketbase.PocketBase) {
+	appLogger = app.Logger()
+	
+	// Check if file logging is enabled
+	fileLoggingEnabled, _ := app.Store().Get("FILE_LOGGING_ENABLED").(bool)
+	if fileLoggingEnabled {
+		logFilePath, _ := app.Store().Get("LOG_FILE_PATH").(string)
+		
+		// Create directory if it doesn't exist
+		dir := filepath.Dir(logFilePath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create log directory: %v\n", err)
+			return
+		}
+		
+		// Open log file
+		file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
+			return
+		}
+		
+		// Store file for later cleanup
+		logFile = file
+		
+		// Redirect loggers to file
+		Debug.SetOutput(file)
+		Info.SetOutput(file)
+		Warning.SetOutput(file)
+		Error.SetOutput(file)
+		Fatal.SetOutput(file)
+		
+		LogInfo("File logging enabled, writing to " + logFilePath)
+	} else {
+		Debug.SetOutput(os.Stdout)
+		Info.SetOutput(os.Stdout)
+		Warning.SetOutput(os.Stdout)
+		Error.SetOutput(os.Stderr)
+		Fatal.SetOutput(os.Stderr)
+
+		LogInfo("Stdout logging enabled")
+	}
+
 }

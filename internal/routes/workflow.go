@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
 	"github.com/shashank-sharma/backend/internal/services/workflow"
@@ -15,6 +16,7 @@ import (
 
 // RegisterWorkflowRoutes registers the workflow-related API endpoints
 func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine) {
+	logger.LogInfo("Registering workflow routes")
 	// Create a new registry
 	connRegistry := workflow.NewConnectorRegistryImpl()
 	

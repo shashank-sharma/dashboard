@@ -6,3 +6,5 @@ pb_data
 prometheus
 exports
 dashboard
+test_gui
+logs

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
+	"github.com/shashank-sharma/backend/internal/logger"
 )
 
 func (app *Application) registerHooks() {
@@ -76,5 +77,11 @@ func (app *Application) registerHooks() {
 		}
 
 		return e.Next()
+	})
+
+	app.Pb.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+		logger.LogInfo("Application shutting down...")
+		logger.Cleanup()
+		return nil
 	})
 }

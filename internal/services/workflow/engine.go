@@ -66,7 +66,7 @@ func NewWorkflowEngine(pb *pocketbase.PocketBase) *WorkflowEngine {
 	
 	// Log all available connectors for debugging
 	availableConnectors := registry.GetAvailableConnectors()
-	logger.Info.Printf("Available workflow connectors: %v", availableConnectors)
+	logger.LogInfo("Available workflow connectors: %v", availableConnectors)
 	
 	return &WorkflowEngine{
 		dao:      pb,
@@ -773,5 +773,5 @@ func RegisterConnectors(registry types.ConnectorRegistry) {
 	// Register connectors from the connectors package
 	connectors.RegisterAllConnectors(registry)
 	
-	logger.Info.Println("All workflow connectors registered successfully")
+	logger.LogInfo("All workflow connectors registered successfully")
 }

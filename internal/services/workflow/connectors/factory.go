@@ -23,5 +23,5 @@ func RegisterAllConnectors(registry types.ConnectorRegistry) {
 	// Note: file_source, transform_processor, and log_destination are defined
 	// in the workflow package and will be registered separately
 	
-	logger.Info.Println("All connectors registered successfully")
+	logger.LogInfo("All connectors registered successfully")
 } 

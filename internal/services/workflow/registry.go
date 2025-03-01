@@ -12,7 +12,7 @@ func RegisterLocalConnectors(registry types.ConnectorRegistry) {
 	registry.Register("transform_processor", NewTransformProcessor)
 	registry.Register("log_destination", NewLogDestinationConnector)
 	
-	logger.Info.Println("Registered local workflow connectors")
+	logger.LogInfo("Registered local workflow connectors")
 }
 
 // GetAvailableConnectors returns a list of all available connectors with their metadata
