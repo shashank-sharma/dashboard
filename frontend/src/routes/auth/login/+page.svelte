@@ -54,7 +54,9 @@
 	{#if $currentUser}
 		<Card class="w-[350px]">
 			<CardHeader>
-				<CardTitle>Welcome, {$currentUser.username}!</CardTitle>
+				<CardTitle
+					>Welcome to Nen Space, {$currentUser.username}!</CardTitle
+				>
 				<CardDescription>You are currently signed in.</CardDescription>
 			</CardHeader>
 			<CardFooter>
@@ -66,7 +68,7 @@
 	{:else}
 		<Card class="w-[350px]">
 			<CardHeader>
-				<CardTitle>Welcome</CardTitle>
+				<CardTitle>Welcome to Nen Space</CardTitle>
 				<CardDescription
 					>Sign in to your account or create a new one.</CardDescription
 				>

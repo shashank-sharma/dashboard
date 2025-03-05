@@ -11,13 +11,11 @@ let logCacheOperations = DEV_MODE;
 // Assets to cache
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.png',
   '/icons/apple-icon-180.png',
   '/icons/manifest-icon-192.maskable.png',
   '/icons/manifest-icon-512.maskable.png',
-  '/app.css',
   '/fonts/Gilroy.woff2'
 ];
 

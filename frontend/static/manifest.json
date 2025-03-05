@@ -1,7 +1,7 @@
 {
-    "name": "Your App Name",
-    "short_name": "App",
-    "description": "Your application description",
+    "name": "Nen Space",
+    "short_name": "NenSpace",
+    "description": "Your personal dashboard for productivity and organization",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",

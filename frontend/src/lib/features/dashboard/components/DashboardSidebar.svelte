@@ -114,7 +114,7 @@
 >
     <div class="p-4 flex items-center justify-between">
         {#if !isCollapsed}
-            <h1 class="text-xl font-bold">Dashboard</h1>
+            <h1 class="text-xl font-bold">Nen Space</h1>
         {/if}
         <Button variant="ghost" size="icon" on:click={toggleSidebar}>
             <svelte:component

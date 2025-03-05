@@ -1,4 +1,4 @@
-name: backend
+name: nenspace-backend
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - "v*"
 
 env:
-  DOCKER_REPO: shashank-sharma/backend
-  GHCR_REPO: ghcr.io/shashank-sharma/backend
+  DOCKER_REPO: shashank-sharma/nenspace
+  GHCR_REPO: ghcr.io/shashank-sharma/nenspace
 
 jobs:
   build:

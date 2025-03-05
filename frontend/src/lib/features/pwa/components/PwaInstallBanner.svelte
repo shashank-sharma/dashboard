@@ -217,7 +217,7 @@
         <div class="flex justify-between items-start mb-3">
           <div class="flex items-center gap-2">
             <Info class="h-5 w-5 text-blue-500" />
-            <h3 class="font-semibold">Install Manually</h3>
+            <h3 class="font-semibold">Install Nen Space Manually</h3>
           </div>
           <Button variant="ghost" size="icon" on:click={dismiss}>
             <X class="w-4 h-4" />
@@ -236,7 +236,7 @@
 
           {#if browserInfo.isIOS}
             <!-- iOS Safari instructions -->
-            <p>To install this app on your iPhone or iPad:</p>
+            <p>To install Nen Space on your iPhone or iPad:</p>
             <ol class="list-decimal space-y-2 pl-5">
               <li>
                 Tap the <span class="inline-block px-2 font-semibold"
@@ -250,86 +250,66 @@
                 >
               </li>
               <li>
-                Tap <span class="inline-block px-2 font-semibold">Add</span> in the
-                top right
+                Tap <span class="inline-block px-2 font-semibold">Add</span>
               </li>
             </ol>
-          {:else if browserInfo.isAndroid && browserInfo.isChrome}
-            <!-- Android Chrome instructions -->
-            <p>To install this app on your Android device:</p>
+          {:else if browserInfo.isChrome}
+            <!-- Chrome instructions -->
+            <p>To install Nen Space in Chrome:</p>
             <ol class="list-decimal space-y-2 pl-5">
               <li>
-                Tap the <span class="inline-block px-2 font-semibold"
-                  >Three dots</span
-                > menu in Chrome
-              </li>
-              <li>
-                Tap <span class="inline-block px-2 font-semibold"
-                  >Install app</span
-                >
-                or
-                <span class="inline-block px-2 font-semibold"
-                  >Add to Home screen</span
-                >
-              </li>
-              <li>Follow the on-screen instructions</li>
-            </ol>
-          {:else if browserInfo.isChrome || browserInfo.isEdge}
-            <!-- Chrome/Edge desktop instructions -->
-            <p>To install this app in {browserInfo.name}:</p>
-            <ol class="list-decimal space-y-2 pl-5">
-              <li>
-                Click the <span class="inline-block px-2 font-semibold"
-                  >Install</span
-                >
-                icon in the address bar <Chrome class="h-4 w-4 inline" />
-              </li>
-              <li>
-                Or, click the <span class="inline-block px-2 font-semibold"
-                  >Three dots</span
-                > menu
+                Click the menu button <span
+                  class="inline-block px-2 font-semibold"
+                  ><Menu class="h-4 w-4 inline" /></span
+                > in the top right
               </li>
               <li>
                 Select <span class="inline-block px-2 font-semibold"
-                  >Install [App Name]...</span
+                  >Install App</span
+                >
+                or
+                <span class="inline-block px-2 font-semibold"
+                  >Install Nen Space</span
                 >
               </li>
             </ol>
           {:else if browserInfo.isFirefox}
             <!-- Firefox instructions -->
-            <p>To install this app in Firefox:</p>
+            <p>To install Nen Space in Firefox:</p>
             <ol class="list-decimal space-y-2 pl-5">
               <li>
-                Click the <span class="inline-block px-2 font-semibold"
-                  >Three dots</span
-                >
-                menu in the address bar <Menu class="h-4 w-4 inline" />
+                Click the menu button <span
+                  class="inline-block px-2 font-semibold"
+                  ><Menu class="h-4 w-4 inline" /></span
+                > in the top right
               </li>
               <li>
                 Select <span class="inline-block px-2 font-semibold"
-                  >Install</span
+                  >Install App</span
+                >
+                or
+                <span class="inline-block px-2 font-semibold"
+                  >Add to Home Screen</span
                 >
               </li>
             </ol>
           {:else}
             <!-- Generic instructions -->
-            <p>To install this app:</p>
+            <p>To install Nen Space on your device:</p>
             <ol class="list-decimal space-y-2 pl-5">
               <li>
-                Look for an <span class="inline-block px-2 font-semibold"
-                  >Install</span
-                >
-                or
+                Open the menu in {browserInfo.name}
+              </li>
+              <li>
+                Look for an option like <span
+                  class="inline-block px-2 font-semibold">Install App</span
+                >,
                 <span class="inline-block px-2 font-semibold"
                   >Add to Home Screen</span
-                > option in your browser's menu
-              </li>
-              <li>
-                On mobile, this is usually in the share menu or browser options
-              </li>
-              <li>
-                On desktop, look for an icon in the address bar or in the main
-                browser menu
+                >, or
+                <span class="inline-block px-2 font-semibold"
+                  >Install Nen Space</span
+                >
               </li>
             </ol>
           {/if}
@@ -343,29 +323,32 @@
         </div>
       </div>
     {:else}
-      <!-- Standard install banner -->
+      <!-- Main banner content -->
       <div
-        class="bg-card text-card-foreground shadow-lg rounded-lg p-4 mx-auto max-w-md flex items-center justify-between border"
+        class="bg-card text-card-foreground shadow-lg rounded-lg p-4 mx-auto max-w-lg border"
       >
-        <div class="flex items-center space-x-4">
-          <div
-            class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center"
-          >
-            <Download class="w-5 h-5 text-primary" />
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <Download class="h-5 w-5 text-primary" />
+            <h3 class="font-semibold">Install Nen Space</h3>
           </div>
-          <div>
-            <h3 class="font-semibold">Install App</h3>
-            <p class="text-sm text-muted-foreground">
-              Add to your home screen for a better experience
-            </p>
-          </div>
-        </div>
-
-        <div class="flex space-x-2">
           <Button variant="ghost" size="icon" on:click={dismiss}>
             <X class="w-4 h-4" />
           </Button>
-          <Button variant="default" on:click={handleInstall}>Install</Button>
+        </div>
+
+        <p class="text-sm mb-3">
+          Install Nen Space on your device for a better experience with offline
+          access and faster loading.
+        </p>
+
+        <div class="flex justify-end gap-2">
+          <Button variant="outline" size="sm" on:click={dismiss}>
+            Not now
+          </Button>
+          <Button variant="default" size="sm" on:click={handleInstall}>
+            <Download class="w-4 h-4 mr-2" /> Install
+          </Button>
         </div>
       </div>
     {/if}
