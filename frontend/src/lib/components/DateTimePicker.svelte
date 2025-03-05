@@ -6,10 +6,20 @@
     import { ScrollArea } from "$lib/components/ui/scroll-area";
     import { cn } from "$lib/utils";
     import { CalendarDays } from "lucide-svelte";
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
+    import type { DateValue } from "@internationalized/date";
+    import {
+        getLocalTimeZone,
+        today,
+        parseDate,
+        CalendarDate,
+    } from "@internationalized/date";
 
-    export let value: Date | undefined = undefined;
+    export let value: DateValue | undefined = undefined;
     export let placeholder = "Pick date and time";
+
+    // Keep a JavaScript Date version for handling time
+    let jsDate: Date | undefined = undefined;
 
     const dispatch = createEventDispatcher<{
         change: Date;
@@ -17,49 +27,130 @@
 
     let isOpen = false;
 
-    // Create arrays for hours and minutes
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
-
-    function formatDate(date: Date | undefined): string {
-        if (!date) return "";
-        return date.toLocaleString("en-US", {
-            month: "2-digit",
-            day: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-        });
-    }
-
-    function handleDateSelect(date: Date | undefined) {
-        if (!date) return;
-
-        // Preserve existing time if we have it
-        if (value) {
-            date.setHours(value.getHours(), value.getMinutes());
+    // Initialize with the current date and time if no value provided
+    onMount(() => {
+        if (!value) {
+            value = today(getLocalTimeZone());
         }
 
-        value = date;
-        dispatch("change", value);
+        // Initialize jsDate with current date AND time
+        if (!jsDate) {
+            jsDate = new Date();
+        } else {
+            updateJsDateFromValue();
+        }
+    });
+
+    // This reactive statement ensures jsDate updates when value changes
+    // either through bind:value or explicit setting
+    $: if (value) {
+        updateJsDateFromValue();
+    }
+
+    // Make sure the UI updates when jsDate changes
+    $: formattedDateTime = formatDateTime(jsDate);
+
+    // Update jsDate when value changes
+    function updateJsDateFromValue() {
+        if (!value) return;
+
+        const { year, month, day } = extractDateParts(value);
+
+        // Keep existing time if jsDate exists, otherwise use current time
+        if (jsDate) {
+            const hours = jsDate.getHours();
+            const minutes = jsDate.getMinutes();
+            jsDate = new Date(year, month - 1, day, hours, minutes);
+        } else {
+            // For initial setup, use current time
+            const now = new Date();
+            jsDate = new Date(
+                year,
+                month - 1,
+                day,
+                now.getHours(),
+                now.getMinutes(),
+            );
+        }
+
+        // Dispatch the change event when value is updated
+        dispatchChangeEvent();
+    }
+
+    // Extract date parts from a CalendarDate
+    function extractDateParts(dateValue: DateValue): {
+        year: number;
+        month: number;
+        day: number;
+    } {
+        if ("year" in dateValue && "month" in dateValue && "day" in dateValue) {
+            return {
+                year: dateValue.year,
+                month: dateValue.month,
+                day: dateValue.day,
+            };
+        }
+        // Fallback to current date if structure is unexpected
+        const now = new Date();
+        return {
+            year: now.getFullYear(),
+            month: now.getMonth() + 1,
+            day: now.getDate(),
+        };
     }
 
     function handleTimeChange(type: "hour" | "minute", val: number) {
+        // Initialize dates if needed
         if (!value) {
-            value = new Date();
+            value = today(getLocalTimeZone());
         }
 
-        const newDate = new Date(value);
+        if (!jsDate) {
+            jsDate = new Date();
+        }
 
+        // Create a new Date object to ensure reactivity
+        const newDate = new Date(jsDate);
+
+        // Update the time on the new Date object
         if (type === "hour") {
             newDate.setHours(val);
         } else {
             newDate.setMinutes(val);
         }
 
-        value = newDate;
-        dispatch("change", value);
+        // Assign the new Date object to jsDate to trigger reactivity
+        jsDate = newDate;
+
+        // Dispatch the change event
+        dispatchChangeEvent();
+    }
+
+    function dispatchChangeEvent() {
+        if (jsDate) {
+            dispatch("change", new Date(jsDate));
+        }
+    }
+
+    // Create arrays for hours and minutes
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
+
+    function formatDateTime(date: Date | undefined): string {
+        if (!date) return "";
+
+        try {
+            return date.toLocaleString("en-US", {
+                month: "2-digit",
+                day: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
+        } catch (error) {
+            return "Invalid date/time";
+        }
     }
 </script>
 
@@ -74,17 +165,12 @@
             )}
         >
             <CalendarDays class="mr-2 h-4 w-4" />
-            {value ? formatDate(value) : placeholder}
+            {jsDate ? formattedDateTime : placeholder}
         </Button>
     </Popover.Trigger>
     <Popover.Content class="w-auto p-0">
         <div class="sm:flex">
-            <Calendar
-                mode="single"
-                selected={value}
-                onSelect={handleDateSelect}
-                initialFocus
-            />
+            <Calendar bind:value initialFocus />
             <div
                 class="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x border-l"
             >
@@ -93,7 +179,7 @@
                         {#each hours as hour}
                             <Button
                                 size="icon"
-                                variant={value && value.getHours() === hour
+                                variant={jsDate && jsDate.getHours() === hour
                                     ? "default"
                                     : "ghost"}
                                 class="sm:w-full shrink-0 aspect-square"
@@ -109,7 +195,8 @@
                         {#each minutes as minute}
                             <Button
                                 size="icon"
-                                variant={value && value.getMinutes() === minute
+                                variant={jsDate &&
+                                jsDate.getMinutes() === minute
                                     ? "default"
                                     : "ghost"}
                                 class="sm:w-full shrink-0 aspect-square"

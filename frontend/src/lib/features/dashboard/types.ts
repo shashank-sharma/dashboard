@@ -5,6 +5,8 @@ export interface DashboardSection {
     label: string;
     icon: ComponentType;
     path: string;
+    collapsible?: boolean;
+    children?: DashboardSection[];
 }
 
 export interface DashboardStats {

@@ -7,6 +7,10 @@
     import { theme } from "$lib/stores/theme.store";
     import "../app.css";
     import ThemeInitializer from "$lib/components/ThemeInitializer.svelte";
+    import { initPwa } from "$lib/pwa";
+    import PwaInstallBanner from "$lib/components/PwaInstallBanner.svelte";
+    import PwaDebugTools from "$lib/components/PwaDebugTools.svelte";
+    import { browser } from "$app/environment";
     let isLoading = true;
 
     setContext("theme", {
@@ -18,6 +22,11 @@
         setTimeout(() => {
             isLoading = false;
         }, 500);
+
+        // Initialize PWA functionality when on the client
+        if (browser) {
+            initPwa();
+        }
     });
 </script>
 
@@ -26,6 +35,16 @@
 {#if isLoading || $navigating}
     <Loading />
 {/if}
+
+    <!-- PWA Install Banner -->
+    {#if browser}
+        <PwaInstallBanner />
+        
+        <!-- PWA Debug Tools (only in development) -->
+        {#if import.meta.env.DEV}
+            <PwaDebugTools />
+        {/if}
+    {/if}
 
 <div
     class="app-container"

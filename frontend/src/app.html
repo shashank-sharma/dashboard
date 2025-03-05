@@ -5,6 +5,14 @@
 	<meta charset="utf-8" />
 	<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 	<meta name="viewport" content="width=device-width" />
+	<!-- PWA Meta Tags -->
+	<meta name="theme-color" content="#000000" />
+	<meta name="description" content="Dashboard description" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="mobile-web-app-status-bar-style" content="black" />
+	<meta name="mobile-web-app-title" content="Dashboard" />
+	<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-icon-180.png" />
+	<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
 	<script>
 		// On page load or when changing themes, best to add inline in `head` to avoid FOUC
 		if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -12,6 +20,18 @@
 		} else {
 			document.documentElement.classList.remove('dark');
 		}
+
+		// Register service worker after page load to avoid impacting performance
+		window.addEventListener('load', async () => {
+			if ('serviceWorker' in navigator) {
+				try {
+					const registration = await navigator.serviceWorker.register('/sw.js');
+					console.log('ServiceWorker registration successful with scope: ', registration.scope);
+				} catch (error) {
+					console.log('ServiceWorker registration failed: ', error);
+				}
+			}
+		});
 	</script>
 	%sveltekit.head%
 </head>

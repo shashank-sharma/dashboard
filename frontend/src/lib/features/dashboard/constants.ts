@@ -13,6 +13,12 @@ import {
     KeySquare,
     Inbox,
     MountainSnow,
+    Key,
+    Terminal,
+    ShieldCheck,
+    ChevronDown,
+    ChevronRight,
+    Utensils
 } from "lucide-svelte";
 
 export const DASHBOARD_SECTIONS: DashboardSection[] = [
@@ -28,5 +34,24 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
     { id: "bookmarks", label: "Bookmarks", icon: Bookmark, path: "/dashboard/bookmarks" },
     { id: "expenses", label: "Expenses", icon: DollarSign, path: "/dashboard/expenses" },
     { id: "tasks", label: "Tasks", icon: CheckSquare, path: "/dashboard/tasks" },
-    { id: "tokens", label: "Tokens", icon: KeySquare, path: "/dashboard/tokens" }
+    { id: "food-log", label: "Food Log", icon: Utensils, path: "/dashboard/food-log" },
+    { 
+        id: "credentials", 
+        label: "Credentials", 
+        icon: ShieldCheck, 
+        path: "/dashboard/credentials",
+        collapsible: true,
+        children: [
+            { id: "tokens", label: "Tokens", icon: KeySquare, path: "/dashboard/credentials/tokens" },
+            { id: "developer", label: "Developer", icon: Terminal, path: "/dashboard/credentials/developer" },
+            { id: "api-keys", label: "API Keys", icon: Key, path: "/dashboard/credentials/api-keys" }
+        ]
+    }
+];
+
+export const CREDENTIALS_SECTIONS: DashboardSection[] = [
+    { id: "", label: "Overview", icon: ShieldCheck, path: "/dashboard/credentials" },
+    { id: "tokens", label: "Tokens", icon: KeySquare, path: "/dashboard/credentials/tokens" },
+    { id: "developer", label: "Developer", icon: Terminal, path: "/dashboard/credentials/developer" },
+    { id: "api-keys", label: "API Keys", icon: Key, path: "/dashboard/credentials/api-keys" },
 ];

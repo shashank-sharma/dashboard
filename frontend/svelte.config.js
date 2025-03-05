@@ -9,7 +9,7 @@ const config = {
             assets: 'build',
             fallback: 'index.html',
             precompress: false,
-            strict: true
+            strict: false
         }),
         alias: {
             $components: 'src/lib/components',
@@ -17,9 +17,6 @@ const config = {
             $services: 'src/lib/services',
             $types: 'src/lib/types'
         },
-        paths: {
-            base: process.env.NODE_ENV === 'production' ? '/dashboard/frontend' : ''
-        }
     },
     preprocess: preprocess()
 };
