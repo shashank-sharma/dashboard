@@ -1,7 +1,8 @@
 // Service worker version - increment this when you make changes
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `app-cache-${CACHE_VERSION}`;
-const DEV_MODE = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+// const DEV_MODE = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+const DEV_MODE = false;
 
 // Debug flags for testing
 let simulateOffline = false;
@@ -13,6 +14,11 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/manifest.json',
   '/favicon.png',
+  '/icons/apple-icon-180.png',
+  '/icons/manifest-icon-192.maskable.png',
+  '/icons/manifest-icon-512.maskable.png',
+  '/app.css',
+  '/fonts/Gilroy.woff2'
 ];
 
 // Helper for logging in development
@@ -82,6 +88,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;  
   const url = new URL(event.request.url);
+
   if (
     url.pathname.startsWith('/browser-sync/') ||
     url.pathname.startsWith('/__vite') ||

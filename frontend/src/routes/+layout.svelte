@@ -7,25 +7,86 @@
     import { theme } from "$lib/stores/theme.store";
     import "../app.css";
     import ThemeInitializer from "$lib/components/ThemeInitializer.svelte";
-    import { initPwa } from "$lib/pwa";
-    import PwaInstallBanner from "$lib/components/PwaInstallBanner.svelte";
-    import PwaDebugTools from "$lib/components/PwaDebugTools.svelte";
+    import {
+        initPwa,
+        showInstallPrompt,
+        installPrompt,
+        isPwaInstalled,
+        isDebugModeEnabled,
+        triggerInstallBanner,
+    } from "$lib/features/pwa/services";
+    import PwaInstallBanner from "$lib/features/pwa/components/PwaInstallBanner.svelte";
+    import { Button } from "$lib/components/ui/button";
+    import { Download } from "lucide-svelte";
     import { browser } from "$app/environment";
+
     let isLoading = true;
+    let canInstallPwa = false;
+    let pwaInstallBanner: any;
+    let isDebugMode = false;
 
     setContext("theme", {
         theme,
         toggleTheme: theme.toggleTheme,
     });
 
-    onMount(async () => {
+    // Function to force show the install banner regardless of dismissal status
+    function forceShowInstallBanner() {
+        if (browser) {
+            console.log(
+                "[PWA] Forcing install banner display from layout button",
+            );
+
+            sessionStorage.removeItem("pwa-banner-dismissed");
+
+            if (
+                pwaInstallBanner &&
+                typeof pwaInstallBanner.forceShow === "function"
+            ) {
+                pwaInstallBanner.forceShow();
+                return;
+            }
+
+            const unsubscribe = installPrompt.subscribe((value) => {
+                if (value) {
+                    console.log("[PWA] Using real prompt");
+                    showInstallPrompt();
+                } else {
+                    console.log("[PWA] No real prompt, using mock");
+                    triggerInstallBanner();
+                }
+            });
+            unsubscribe();
+        }
+    }
+
+    onMount(() => {
         setTimeout(() => {
             isLoading = false;
         }, 500);
 
-        // Initialize PWA functionality when on the client
         if (browser) {
+            // Check if debug mode is enabled
+            isDebugMode = isDebugModeEnabled();
             initPwa();
+
+            const unsubInstalled = isPwaInstalled.subscribe((value) => {
+                canInstallPwa = !value;
+            });
+
+            // Listen for force show events from other components
+            window.addEventListener(
+                "force-show-pwa-banner",
+                forceShowInstallBanner,
+            );
+
+            return () => {
+                unsubInstalled();
+                window.removeEventListener(
+                    "force-show-pwa-banner",
+                    forceShowInstallBanner,
+                );
+            };
         }
     });
 </script>
@@ -36,15 +97,24 @@
     <Loading />
 {/if}
 
-    <!-- PWA Install Banner -->
-    {#if browser}
-        <PwaInstallBanner />
-        
-        <!-- PWA Debug Tools (only in development) -->
-        {#if import.meta.env.DEV}
-            <PwaDebugTools />
-        {/if}
+<!-- PWA Install Banner -->
+{#if browser}
+    <PwaInstallBanner bind:this={pwaInstallBanner} />
+
+    <!-- Always available install button (fixed position) -->
+    {#if canInstallPwa && !isDebugMode}
+        <div class="fixed bottom-4 right-4 z-50">
+            <Button
+                variant="default"
+                size="sm"
+                class="shadow-lg gap-1"
+                on:click={forceShowInstallBanner}
+            >
+                <Download class="w-4 h-4" /> Install App
+            </Button>
+        </div>
     {/if}
+{/if}
 
 <div
     class="app-container"
