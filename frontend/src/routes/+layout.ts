@@ -1,3 +1,3 @@
 export const ssr = false;
 export const csr = true;
-export const prerender = true;
+export const prerender = 'auto';
