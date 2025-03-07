@@ -26,15 +26,14 @@ func GetUserId(tokenString string) (string, error) {
 	// Decode the payload (no signature verification)
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		logger.Error.Println("Error decoding payload:", err)
+		logger.LogError("Error decoding payload:", err)
 		return "", err
 	}
 
-	// Unmarshal the payload
 	var claims map[string]interface{}
 	err = json.Unmarshal(payload, &claims)
 	if err != nil {
-		logger.Error.Println("Error unmarshalling payload:", err)
+		logger.LogError("Error unmarshalling payload:", err)
 		return "", err
 	}
 

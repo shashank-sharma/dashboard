@@ -28,6 +28,7 @@ const callerFlags = log.Ldate | log.Ltime
 
 var (
 	appLogger *slog.Logger
+	isDev bool
 	// Initialize standard loggers
 	Debug   = log.New(os.Stdout, fmt.Sprintf("%s[DEBUG]%s ", boldCyan, reset), callerFlags)
 	Info    = log.New(os.Stdout, fmt.Sprintf("%s[INFO]%s ", boldGreen, reset), callerFlags)
@@ -98,7 +99,7 @@ func formatKeyValuePairs(args ...interface{}) string {
 // LogDebug logs with the DEBUG level and correct caller information
 // Handles key-value pairs in the format: LogInfo("message", "key1", value1, "key2", value2)
 func LogDebug(message string, args ...interface{}) {
-	if appLogger != nil {
+	if appLogger != nil && isDev {
 		appLogger.Debug(message, args...)
 	}
 
@@ -113,7 +114,7 @@ func LogDebug(message string, args ...interface{}) {
 // LogInfo logs with the INFO level and correct caller information
 // Handles key-value pairs in the format: LogInfo("message", "key1", value1, "key2", value2)
 func LogInfo(message string, args ...interface{}) {
-	if appLogger != nil {
+	if appLogger != nil && isDev {
 		appLogger.Info(message, args...)
 	}
 
@@ -128,7 +129,7 @@ func LogInfo(message string, args ...interface{}) {
 // LogError logs with the ERROR level and correct caller information
 // Handles key-value pairs in the format: LogError("message", "key1", value1, "key2", value2)
 func LogError(message string, args ...interface{}) {
-	if appLogger != nil {
+	if appLogger != nil && isDev {
 		appLogger.Error(message, args...)
 	}
 
@@ -143,7 +144,7 @@ func LogError(message string, args ...interface{}) {
 // LogWarning logs with the WARNING level and correct caller information
 // Handles key-value pairs in the format: LogWarning("message", "key1", value1, "key2", value2)
 func LogWarning(message string, args ...interface{}) {
-	if appLogger != nil {
+	if appLogger != nil && isDev {
 		appLogger.Warn(message, args...)
 	}
 
@@ -172,6 +173,7 @@ func InitLog(app *pocketbase.PocketBase) {
 	
 	// Check if file logging is enabled
 	fileLoggingEnabled, _ := app.Store().Get("FILE_LOGGING_ENABLED").(bool)
+	isDev, _ := app.Store().Get("DEV").(bool)
 	if fileLoggingEnabled {
 		logFilePath, _ := app.Store().Get("LOG_FILE_PATH").(string)
 		
@@ -199,6 +201,7 @@ func InitLog(app *pocketbase.PocketBase) {
 		Error.SetOutput(file)
 		Fatal.SetOutput(file)
 		
+		LogInfo("Development mode: ", "isDev", isDev)
 		LogInfo("File logging enabled, writing to " + logFilePath)
 	} else {
 		Debug.SetOutput(os.Stdout)
@@ -207,6 +210,7 @@ func InitLog(app *pocketbase.PocketBase) {
 		Error.SetOutput(os.Stderr)
 		Fatal.SetOutput(os.Stderr)
 
+		LogInfo("Development mode: ", "isDev", isDev)
 		LogInfo("Stdout logging enabled")
 	}
 

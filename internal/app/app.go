@@ -2,11 +2,9 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -38,20 +36,16 @@ type Application struct {
 	postInitHooks   []func()
 }
 
-func New() *Application {
+func New(configFlags config.ConfigFlags) *Application {
 	pb := pocketbase.NewWithConfig(pocketbase.Config{
 		DefaultDataDir: "./pb_data",
 		HideStartBanner: false,
-		DefaultDev: false,
+		DefaultDev: configFlags.Dev,
 	})
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Failed to load environment variables")
-	}
 
 	// Initialize store and config (basic initialization only)
 	store.InitApp(pb)
-	config.Init(pb)
+	config.Init(pb, configFlags)
 
 	// Create a minimal Application with just PocketBase
 	app := &Application{
@@ -67,12 +61,9 @@ func New() *Application {
 	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		// STAGE 1: Initialize base services that don't depend on application services
 		logger.InitLog(pb)
-		logger.LogInfo("Base logging initialized")
 		
 		metrics.RegisterPrometheusMetrics(pb)
-		logger.LogInfo("Metrics initialized")
-		
-		logger.LogInfo("Initializing application services...")
+		logger.LogInfo("Initializing application services")
 			
 		app.initializeServices()		
 		app.InitCronjobs()
@@ -132,6 +123,9 @@ func (app *Application) configureRoutes(e *core.ServeEvent) {
 	routes.RegisterCalendarRoutes(e, app.CalendarService)
 	routes.RegisterMailRoutes(e, app.MailService)
 	routes.RegisterFoldRoutes(e, app.FoldService)
+	routes.RegisterSSHRoutes(e)
+	
+	logger.LogInfo("All routes registered successfully")
 }
 
 func (app *Application) InitCronjobs() error {

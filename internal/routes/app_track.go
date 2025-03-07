@@ -72,7 +72,6 @@ type TrackFocusAPI struct {
 
 
 func RegisterTrackRoutes(e *core.ServeEvent) {
-	logger.LogDebug("Routes registered")
 	e.Router.POST("/api/track/create", TrackCreateAppItems)
 	e.Router.POST("/api/track", TrackDeviceStatus)
 	e.Router.GET("/api/track/getapp", GetCurrentApp)

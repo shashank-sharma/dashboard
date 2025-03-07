@@ -16,6 +16,7 @@ type ConfigFlags struct {
 	Metrics     bool
 	FileLogging bool
 	WithGui     bool
+	Dev         bool
 }
 
 func getEnv(key string, defaultValue string) string {
@@ -26,31 +27,10 @@ func getEnv(key string, defaultValue string) string {
 	return value
 }
 
-func Init(pb *pocketbase.PocketBase) {
+func Init(pb *pocketbase.PocketBase, config ConfigFlags) {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Failed to load environment variables")
-	}
-
-	argsWithoutProg := os.Args[1:]
-	
-	// Initialize config with default values
-	config := ConfigFlags{
-		Metrics:     false,
-		FileLogging: false,
-		WithGui:     false,
-	}
-	
-	// Check for flags in arguments
-	for _, arg := range argsWithoutProg {
-		switch arg {
-		case "--metrics":
-			config.Metrics = true
-		case "--file-logging":
-			config.FileLogging = true
-		case "--with-gui":
-			config.WithGui = true
-		}
 	}
 
 	pb.Store().Set("ENCRYPTION_KEY", getEnv("ENCRYPTION_KEY", "default_encryption_key"))
@@ -59,6 +39,7 @@ func Init(pb *pocketbase.PocketBase) {
 	pb.Store().Set("FILE_LOGGING_ENABLED", config.FileLogging)
 	pb.Store().Set("LOG_FILE_PATH", getEnv("LOG_FILE_PATH", "logs/app.log"))
 	pb.Store().Set("WITH_GUI", config.WithGui)
+	pb.Store().Set("DEV", config.Dev)
 	
 	// Set global flags for easy access
 	EnableMetricsFlag = config.Metrics

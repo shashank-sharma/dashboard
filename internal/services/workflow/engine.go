@@ -772,6 +772,4 @@ func RegisterConnectors(registry types.ConnectorRegistry) {
 	
 	// Register connectors from the connectors package
 	connectors.RegisterAllConnectors(registry)
-	
-	logger.LogInfo("All workflow connectors registered successfully")
 }

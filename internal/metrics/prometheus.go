@@ -103,9 +103,6 @@ func RegisterPrometheusMetrics(app *pocketbase.PocketBase) {
 	if !portOk || port <= 0 {
 		// Use default port if not found or invalid
 		port = 9091
-		logger.LogInfo(fmt.Sprintf("Using default metrics port %d", port))
-	} else {
-		logger.LogInfo(fmt.Sprintf("Using metrics port %d from runtime store", port))
 	}
 
 	logger.LogInfo(fmt.Sprintf("Enabling Prometheus metrics with port %d", port))
