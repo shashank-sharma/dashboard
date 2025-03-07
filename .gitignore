@@ -5,6 +5,5 @@ pb_data
 .env
 prometheus
 exports
-dashboard
 test_gui
 logs
