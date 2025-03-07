@@ -6,6 +6,7 @@
     import { Button } from "$lib/components/ui/button";
     import ServerCard from "./ServerCard.svelte";
     import ServerDialog from "./ServerDialog.svelte";
+    import SSHTerminal from "./SSHTerminal.svelte";
     import * as AlertDialog from "$lib/components/ui/alert-dialog";
     import type { Server } from "../types";
 
@@ -13,6 +14,7 @@
     let loading = true;
     let showDialog = false;
     let showDeleteDialog = false;
+    let showSSHTerminal = false;
     let selectedServer: Server | null = null;
     let serverToDelete: string | null = null;
 
@@ -23,7 +25,7 @@
                 sort: "-created",
                 expand: "user",
             });
-            servers = records;
+            servers = records as unknown as Server[];
         } catch (error) {
             console.error("Load servers error:", error);
             toast.error("Failed to load servers");
@@ -34,19 +36,33 @@
 
     async function handleServerSubmit(data: any) {
         try {
+            const submissionData = {
+                name: data.name,
+                provider: data.provider,
+                ip: data.ip,
+                port: data.port || 22,
+                username: data.username || "",
+                security_key: data.security_key || null,
+                ssh_enabled: !!data.ssh_enabled,
+                is_active: !!data.is_active,
+                is_reachable: !!data.is_reachable,
+            };
+
             if (selectedServer) {
-                await pb.collection("servers").update(selectedServer.id, data);
+                await pb
+                    .collection("servers")
+                    .update(selectedServer.id, submissionData);
                 toast.success("Server updated successfully");
             } else {
                 const serverData = {
-                    ...data,
+                    ...submissionData,
                     user: pb.authStore.model?.id,
-                    is_active: true,
                 };
                 await pb.collection("servers").create(serverData);
                 toast.success("Server created successfully");
             }
             showDialog = false;
+            selectedServer = null;
             await loadServers();
         } catch (error) {
             console.error("Server submission error:", error);
@@ -66,6 +82,11 @@
     function handleDelete(id: string) {
         serverToDelete = id;
         showDeleteDialog = true;
+    }
+
+    function handleSSH(server: Server) {
+        selectedServer = server;
+        showSSHTerminal = true;
     }
 
     async function confirmDelete() {
@@ -138,6 +159,7 @@
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onToggleStatus={handleToggleStatus}
+                    onSSH={handleSSH}
                 />
             {/each}
         </div>
@@ -151,6 +173,15 @@
             selectedServer = null;
         }}
         onSubmit={handleServerSubmit}
+    />
+
+    <SSHTerminal
+        bind:open={showSSHTerminal}
+        server={selectedServer}
+        onClose={() => {
+            showSSHTerminal = false;
+            selectedServer = null;
+        }}
     />
 
     <AlertDialog.Root bind:open={showDeleteDialog}>

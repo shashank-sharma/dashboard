@@ -9,84 +9,100 @@
     import ThemeInitializer from "$lib/components/ThemeInitializer.svelte";
     import {
         initPwa,
-        showInstallPrompt,
-        installPrompt,
-        isPwaInstalled,
         isDebugModeEnabled,
-        triggerInstallBanner,
+        disableServiceWorkerCaching,
+        enableServiceWorkerCaching,
+        isServiceWorkerCachingDisabled,
     } from "$lib/features/pwa/services";
-    import PwaInstallBanner from "$lib/features/pwa/components/PwaInstallBanner.svelte";
     import { Button } from "$lib/components/ui/button";
-    import { Download } from "lucide-svelte";
+    import { RefreshCw } from "lucide-svelte";
     import { browser } from "$app/environment";
-
+    import UpdateDetector from "$lib/features/pwa/components/UpdateDetector.svelte";
+    import { toast } from "svelte-sonner";
     let isLoading = true;
-    let canInstallPwa = false;
-    let pwaInstallBanner: any;
     let isDebugMode = false;
+    let isCachingDisabled = false;
 
     setContext("theme", {
         theme,
         toggleTheme: theme.toggleTheme,
     });
 
-    // Function to force show the install banner regardless of dismissal status
-    function forceShowInstallBanner() {
-        if (browser) {
-            console.log(
-                "[PWA] Forcing install banner display from layout button",
-            );
+    async function handleFreshReload() {
+        toast.loading("Clearing caches and reloading...");
+        // Force clear caches - this is more thorough than just disabling caching
+        try {
+            if (browser && "caches" in window) {
+                const cacheKeys = await window.caches.keys();
+                await Promise.all(
+                    cacheKeys.map((key) => window.caches.delete(key)),
+                );
 
-            sessionStorage.removeItem("pwa-banner-dismissed");
+                await disableServiceWorkerCaching();
+                isCachingDisabled = true;
 
-            if (
-                pwaInstallBanner &&
-                typeof pwaInstallBanner.forceShow === "function"
-            ) {
-                pwaInstallBanner.forceShow();
-                return;
+                const timestamp = new Date().getTime();
+                const url = new URL(window.location.href);
+                url.searchParams.set("_t", timestamp.toString());
+
+                window.location.href = url.toString();
+            } else {
+                window.location.reload();
             }
-
-            const unsubscribe = installPrompt.subscribe((value) => {
-                if (value) {
-                    console.log("[PWA] Using real prompt");
-                    showInstallPrompt();
-                } else {
-                    console.log("[PWA] No real prompt, using mock");
-                    triggerInstallBanner();
-                }
-            });
-            unsubscribe();
+        } catch (error) {
+            console.error("[PWA] Error during cache clearing:", error);
+            window.location.reload();
         }
     }
 
-    onMount(() => {
+    async function toggleCaching() {
+        if (isCachingDisabled) {
+            toast.loading("Enabling caching...");
+            const success = await enableServiceWorkerCaching();
+            if (success) {
+                toast.success("Caching enabled");
+                isCachingDisabled = false;
+            } else {
+                toast.error("Failed to enable caching");
+            }
+        } else {
+            toast.loading("Disabling caching...");
+            const success = await disableServiceWorkerCaching();
+            if (success) {
+                toast.success(
+                    "Caching disabled - all content will be fetched fresh",
+                );
+                isCachingDisabled = true;
+            } else {
+                toast.error("Failed to disable caching");
+            }
+        }
+    }
+
+    onMount(async () => {
         setTimeout(() => {
             isLoading = false;
         }, 500);
 
         if (browser) {
-            // Check if debug mode is enabled
             isDebugMode = isDebugModeEnabled();
+
+            if (isDebugMode) {
+                try {
+                    isCachingDisabled = await isServiceWorkerCachingDisabled();
+                    console.log(
+                        "[PWA] Service Worker caching is disabled:",
+                        isCachingDisabled,
+                    );
+                } catch (error) {
+                    console.error(
+                        "[PWA] Error checking caching status:",
+                        error,
+                    );
+                }
+            }
+
             initPwa();
-
-            const unsubInstalled = isPwaInstalled.subscribe((value) => {
-                canInstallPwa = !value;
-            });
-
-            // Listen for force show events from other components
-            window.addEventListener(
-                "force-show-pwa-banner",
-                forceShowInstallBanner,
-            );
-
-            return () => {
-                unsubInstalled();
-                window.removeEventListener(
-                    "force-show-pwa-banner",
-                    forceShowInstallBanner,
-                );
-            };
         }
     });
 </script>
@@ -99,18 +115,33 @@
 
 <!-- PWA Install Banner -->
 {#if browser}
-    <PwaInstallBanner bind:this={pwaInstallBanner} />
+    <!-- Service Worker Update Detector -->
+    <UpdateDetector />
 
-    <!-- Always available install button (fixed position) -->
-    {#if canInstallPwa && !isDebugMode}
-        <div class="fixed bottom-4 right-4 z-50">
+    <!-- Add cache toggle button to the dev tools section -->
+    {#if isDebugMode}
+        <div class="fixed top-4 left-4 z-50 flex gap-2">
             <Button
-                variant="default"
+                variant="destructive"
                 size="sm"
                 class="shadow-lg gap-1"
-                on:click={forceShowInstallBanner}
+                on:click={handleFreshReload}
             >
-                <Download class="w-4 h-4" /> Install App
+                <RefreshCw class="h-4 w-4" /> Force Refresh
+            </Button>
+
+            <!-- Add a new button to toggle caching -->
+            <Button
+                variant={isCachingDisabled ? "default" : "outline"}
+                size="sm"
+                class="shadow-lg gap-1"
+                on:click={toggleCaching}
+            >
+                {#if isCachingDisabled}
+                    <span>Caching Disabled</span>
+                {:else}
+                    <span>Disable Caching</span>
+                {/if}
             </Button>
         </div>
     {/if}

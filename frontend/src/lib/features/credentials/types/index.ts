@@ -22,10 +22,23 @@ export interface ApiKey {
     user: string;
 }
 
+export interface SecurityKey {
+    id: string;
+    name: string;
+    description: string;
+    private_key: string;
+    public_key: string;
+    created: string;
+    updated: string;
+    is_active: boolean;
+    user: string;
+}
+
 export interface CredentialsStats {
     totalTokens: number;
     totalDeveloperTokens: number;
     totalApiKeys: number;
+    totalSecurityKeys: number;
 }
 
 export interface CredentialsState {
@@ -46,6 +59,14 @@ export const DEFAULT_API_KEY_FORM = {
     is_active: true,
 };
 
+export const DEFAULT_SECURITY_KEY_FORM = {
+    name: "",
+    description: "",
+    private_key: "",
+    public_key: "",
+    is_active: true,
+};
+
 export const ENVIRONMENTS = [
     { value: "development", label: "Development" },
     { value: "staging", label: "Staging" },
@@ -61,4 +82,9 @@ export const SERVICES = [
     { value: "azure", label: "Azure" },
     { value: "openai", label: "OpenAI" },
     { value: "other", label: "Other" },
+] as const;
+
+export const KEY_TYPES = [
+    { value: "ed25519", label: "ED25519 SSH Key" },
+    { value: "rsa", label: "RSA SSH Key" },
 ] as const; 

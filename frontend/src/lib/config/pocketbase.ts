@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 const POCKETBASE_URL = browser ? 
-    (localStorage.getItem('pocketbaseUrl') || 'http://127.0.0.1:8090') : 
+    (localStorage.getItem('pocketbase-url') || 'http://127.0.0.1:8090') : 
     'http://127.0.0.1:8090';
 
 export const pb = new PocketBase(POCKETBASE_URL);

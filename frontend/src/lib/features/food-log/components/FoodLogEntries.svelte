@@ -2,19 +2,17 @@
     import { onMount, onDestroy } from "svelte";
     import { foodLogStore } from "../stores/food-log.store";
     import { format, isToday, isYesterday, parseISO } from "date-fns";
-    import { Trash2, X, Calendar, Clock, Tag } from "lucide-svelte";
+    import { Trash2, X, Calendar, Clock, Tag, Image } from "lucide-svelte";
     import { toast } from "svelte-sonner";
     import { Button } from "$lib/components/ui/button";
     import { Badge } from "$lib/components/ui/badge";
     import { pb } from "$lib/config/pocketbase";
     import type { FoodLogEntry } from "../types";
     import * as Dialog from "$lib/components/ui/dialog";
-    import type { Writable } from "svelte/store";
-
-    // Accept fileTokenStore as a prop to use shared token
-    export let fileTokenStore:
-        | Writable<{ token: string; expiresAt: number } | null>
-        | undefined = undefined;
+    import {
+        getFileToken,
+        getAuthenticatedFileUrl,
+    } from "$lib/services/file-token";
 
     let loading = true;
     let loadingMore = false;
@@ -22,26 +20,49 @@
     let loadTriggerElement: HTMLDivElement;
     let selectedEntry: FoodLogEntry | null = null;
     let detailsOpen = false;
+    let hasTriedLoadingMore = false;
+    let allEntriesLoaded = false;
 
     // Store file tokens and their expiry times (local fallback if not provided from parent)
     let fileTokens: { token: string; expiresAt: number } | null = null;
     let tokenRequestInProgress = false;
     let tokenPromise: Promise<string> | null = null;
+    let failedImages: Record<string, number> = {};
+    let retryTimeouts: Record<string, number> = {};
 
-    // Subscribe to the store
+    // Add this near the other state variables
+    let confirmDeleteOpen = false;
+    let entryToDelete: FoodLogEntry | null = null;
+
     const unsubscribe = foodLogStore.subscribe((state) => {
         loading = state.isLoading;
+
+        if (hasTriedLoadingMore && !state.hasMore && !state.isLoading) {
+            allEntriesLoaded = true;
+        }
+
+        if (!state.isLoading) {
+            loadingMore = false;
+        }
     });
 
-    // Subscribe to token store if provided
-    let unsubscribeToken: (() => void) | undefined;
-    if (fileTokenStore) {
-        unsubscribeToken = fileTokenStore.subscribe((value) => {
-            fileTokens = value;
-        });
+    function formatTag(tag: string): string {
+        if (!tag) return "Unknown";
+
+        return tag
+            .split("_")
+            .map(
+                (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+            )
+            .join(" ");
     }
 
-    // Format date for grouping
+    function confirmDelete(entry: FoodLogEntry) {
+        entryToDelete = entry;
+        confirmDeleteOpen = true;
+    }
+
     function formatDateGroup(dateString: string): string {
         if (!dateString || dateString === "unknown") {
             return "Unknown Date";
@@ -59,7 +80,7 @@
             } else if (isYesterday(date)) {
                 return "Yesterday";
             } else {
-                return format(date, "EEEE, MMMM d, yyyy");
+                return format(date, "MMMM d, yyyy");
             }
         } catch (error) {
             console.error(`Error formatting date group: ${dateString}`, error);
@@ -67,7 +88,6 @@
         }
     }
 
-    // Group entries by date
     function groupEntriesByDate(
         entries: FoodLogEntry[],
     ): Record<string, FoodLogEntry[]> {
@@ -75,7 +95,6 @@
 
         entries.forEach((entry) => {
             try {
-                // Use the custom date field instead of created for grouping
                 if (!entry.date) {
                     console.warn(
                         `Entry ${entry.id} has no date field, using created date instead`,
@@ -91,7 +110,6 @@
                     return;
                 }
 
-                // Validate the date before parsing
                 const parsedDate = parseISO(entry.date);
                 if (isNaN(parsedDate.getTime())) {
                     console.warn(
@@ -118,7 +136,6 @@
                     `Error processing date for entry ${entry.id}:`,
                     error,
                 );
-                // Fallback to using the created date if the date field has issues
                 try {
                     const dateKey = format(
                         parseISO(entry.created),
@@ -146,67 +163,18 @@
         return groups;
     }
 
-    // Handle deleting an entry
     async function handleDelete(entryId: string) {
-        if (confirm("Are you sure you want to delete this entry?")) {
-            const result = await foodLogStore.deleteEntry(entryId);
+        const result = await foodLogStore.deleteEntry(entryId);
 
-            if (result.success) {
-                toast.success("Entry deleted successfully");
-            } else {
-                toast.error("Failed to delete entry");
-            }
+        if (result.success) {
+            toast.success("Entry deleted successfully");
+            confirmDeleteOpen = false;
+            detailsOpen = false;
+        } else {
+            toast.error("Failed to delete entry");
         }
     }
 
-    // Get file token with caching
-    async function getFileToken(): Promise<string> {
-        const now = Date.now();
-
-        // If we have a valid token, return it
-        if (fileTokens && fileTokens.expiresAt > now) {
-            return fileTokens.token;
-        }
-
-        // If a token request is already in progress, wait for it
-        if (tokenRequestInProgress && tokenPromise) {
-            return tokenPromise;
-        }
-
-        // Start a new token request
-        tokenRequestInProgress = true;
-        tokenPromise = new Promise<string>(async (resolve, reject) => {
-            try {
-                console.log("Fetching new file token");
-                const token = await pb.files.getToken();
-
-                // Cache the token
-                const newToken = {
-                    token,
-                    expiresAt: now + 110 * 1000, // 110 seconds (slightly less than 2 min)
-                };
-
-                // Store in local variable
-                fileTokens = newToken;
-
-                // If parent provided a token store, update it too
-                if (fileTokenStore) {
-                    fileTokenStore.set(newToken);
-                }
-
-                tokenRequestInProgress = false;
-                resolve(token);
-            } catch (error) {
-                tokenRequestInProgress = false;
-                console.error("Error fetching file token:", error);
-                reject("");
-            }
-        });
-
-        return tokenPromise;
-    }
-
-    // Get image URL from PocketBase with token for protected files
     async function getImageUrl(entry: FoodLogEntry): Promise<string> {
         if (!entry.image) return "";
 
@@ -225,13 +193,43 @@
         }
     }
 
-    // Open details modal for an entry
+    // Handle image load failure with retry mechanism
+    function handleImageError(event: Event, entryId: string) {
+        const img = event.target as HTMLImageElement;
+
+        if (!failedImages[entryId]) {
+            failedImages[entryId] = 0;
+        }
+
+        // Limit retries to 3 attempts
+        if (failedImages[entryId] < 3) {
+            failedImages[entryId]++;
+            console.log(
+                `Retrying image load for entry ${entryId}, attempt ${failedImages[entryId]}`,
+            );
+
+            // Clear previous timeout if exists
+            if (retryTimeouts[entryId]) {
+                window.clearTimeout(retryTimeouts[entryId]);
+            }
+
+            // Exponential backoff: 1s, 2s, 4s
+            const delay = Math.pow(2, failedImages[entryId] - 1) * 1000;
+            retryTimeouts[entryId] = window.setTimeout(() => {
+                // Force reload by appending a timestamp
+                const currentSrc = img.src;
+                const url = new URL(currentSrc);
+                url.searchParams.set("_retry", Date.now().toString());
+                img.src = url.toString();
+            }, delay);
+        }
+    }
+
     function openDetails(entry: FoodLogEntry) {
         selectedEntry = entry;
         detailsOpen = true;
     }
 
-    // Format time only
     function formatTime(dateString: string): string {
         try {
             const date = parseISO(dateString);
@@ -245,7 +243,6 @@
         }
     }
 
-    // Format full date and time
     function formatDateTime(dateString: string): string {
         try {
             const date = parseISO(dateString);
@@ -259,8 +256,8 @@
         }
     }
 
-    // Set up infinite scrolling
     function setupInfiniteScroll() {
+        console.log("Setting up infinite scroll");
         observer = new IntersectionObserver(
             (entries) => {
                 const entry = entries[0];
@@ -271,45 +268,74 @@
                     !$foodLogStore.isLoading &&
                     $foodLogStore.entries.length > 0
                 ) {
+                    console.log("Loading more entries...");
                     loadingMore = true;
+                    hasTriedLoadingMore = true;
                     foodLogStore.loadEntries();
+                } else if (
+                    entry.isIntersecting &&
+                    !$foodLogStore.hasMore &&
+                    !$foodLogStore.isLoading
+                ) {
+                    console.log("No more entries to load");
+                    hasTriedLoadingMore = true;
                 }
             },
-            { rootMargin: "100px" },
+            { rootMargin: "250px" },
         );
 
         if (loadTriggerElement) {
+            console.log("Observing load trigger element");
             observer.observe(loadTriggerElement);
         }
     }
 
+    function loadMore() {
+        console.log(
+            "Loading more photos manually",
+            "hasMore:",
+            $foodLogStore.hasMore,
+            "isLoading:",
+            $foodLogStore.isLoading,
+        );
+        if ($foodLogStore.hasMore && !$foodLogStore.isLoading) {
+            loadingMore = true;
+            hasTriedLoadingMore = true;
+            foodLogStore.loadEntries();
+        } else if (!$foodLogStore.hasMore) {
+            console.log("No more photos to load - showing end message");
+            hasTriedLoadingMore = true;
+        }
+    }
+
     onMount(async () => {
-        // Load initial entries
+        console.log("Component mounted, loading initial entries");
         await foodLogStore.loadEntries(true);
+        console.log("Initial entries loaded, hasMore:", $foodLogStore.hasMore);
+
+        if (!$foodLogStore.hasMore) {
+            console.log("Initial load indicates no more entries available");
+            hasTriedLoadingMore = true;
+        }
+
         setupInfiniteScroll();
     });
 
     onDestroy(() => {
-        // Clean up
         unsubscribe();
-        if (unsubscribeToken) {
-            unsubscribeToken();
-        }
-        if (observer && loadTriggerElement) {
-            observer.unobserve(loadTriggerElement);
-        }
+
+        Object.values(retryTimeouts).forEach((timeoutId) => {
+            window.clearTimeout(timeoutId);
+        });
     });
 
-    // Derive grouped entries from the store
     $: groupedEntries = $foodLogStore.entries.length
         ? groupEntriesByDate($foodLogStore.entries)
         : {};
     $: dateKeys = Object.keys(groupedEntries).sort((a, b) => {
-        // Always put unknown at the end
         if (a === "unknown") return 1;
         if (b === "unknown") return -1;
 
-        // Sort valid dates in reverse chronological order
         try {
             return parseISO(b).getTime() - parseISO(a).getTime();
         } catch (error) {
@@ -318,6 +344,31 @@
         }
     });
     $: hasEntries = dateKeys.length > 0;
+    $: hasMoreToLoad = $foodLogStore.hasMore && !loadingMore;
+    $: reachedEnd = !$foodLogStore.hasMore && hasTriedLoadingMore;
+
+    $: if (!$foodLogStore.hasMore && hasTriedLoadingMore) {
+        console.log("Reactive detection: reached end of food log entries");
+    }
+
+    $: if (
+        !$foodLogStore.hasMore &&
+        $foodLogStore.entries.length > 0 &&
+        !loading &&
+        !loadingMore
+    ) {
+        console.log(
+            "Store state indicates we may have reached the end:",
+            "hasMore:",
+            $foodLogStore.hasMore,
+            "entries:",
+            $foodLogStore.entries.length,
+            "loading:",
+            loading,
+            "loadingMore:",
+            loadingMore,
+        );
+    }
 </script>
 
 <div class="food-log-entries">
@@ -326,92 +377,149 @@
             <div class="loader"></div>
         </div>
     {:else if hasEntries}
-        <div class="space-y-8">
-            {#each dateKeys as dateKey}
-                <div class="date-group">
-                    <h3
-                        class="text-xl font-semibold mb-4 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10"
-                    >
-                        <!-- Use the first entry's date field for the group header -->
-                        {formatDateGroup(groupedEntries[dateKey][0].date)}
-                    </h3>
-
-                    <div
-                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                    >
-                        {#each groupedEntries[dateKey] as entry (entry.id)}
+        <div class="photos-container">
+            {#each dateKeys as dateKey, i}
+                <div class="photos-section my-4">
+                    <div class="date-marker" id={`date-${dateKey}`}>
+                        <h3
+                            class="date-header sm:text-sm md:text-md lg:text-lg font-semibold bg-background/95 backdrop-blur-sm py-2 md:px-3 flex items-center gap-2 rounded-lg shadow-sm"
+                        >
                             <div
-                                class="food-entry bg-card rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md cursor-pointer"
-                                on:click={() => openDetails(entry)}
-                                on:keydown={(e) =>
-                                    e.key === "Enter" && openDetails(entry)}
-                                tabindex="0"
-                                role="button"
-                                aria-label="View details of {entry.name}"
+                                class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"
                             >
-                                {#if entry.image}
-                                    <div
-                                        class="aspect-video overflow-hidden relative"
-                                    >
-                                        {#await getImageUrl(entry) then url}
+                                <Calendar class="h-4 w-4 text-primary" />
+                            </div>
+                            <span
+                                >{formatDateGroup(
+                                    groupedEntries[dateKey][0].date,
+                                )}</span
+                            >
+                        </h3>
+                    </div>
+
+                    {#each groupedEntries[dateKey] as entry (entry.id)}
+                        <div
+                            class="photo-item mx-1 relative overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                            data-date={dateKey}
+                            on:click={() => openDetails(entry)}
+                            on:keydown={(e) =>
+                                e.key === "Enter" && openDetails(entry)}
+                            tabindex="0"
+                            role="button"
+                            aria-label="View details of {entry.name}"
+                        >
+                            {#if entry.image}
+                                <div class="photo-image">
+                                    {#await getImageUrl(entry)}
+                                        <div
+                                            class="image-loading-placeholder flex items-center justify-center h-full w-full"
+                                        >
+                                            <div class="w-6 h-6 loader"></div>
+                                        </div>
+                                    {:then url}
+                                        {#if url}
                                             <img
                                                 src={url}
                                                 alt={entry.name}
                                                 class="w-full h-full object-cover"
                                                 loading="lazy"
+                                                on:error={(e) =>
+                                                    handleImageError(
+                                                        e,
+                                                        entry.id,
+                                                    )}
                                             />
-                                        {/await}
-                                    </div>
-                                {/if}
-
-                                <div class="p-4">
-                                    <div
-                                        class="flex justify-between items-start mb-2"
-                                    >
-                                        <h4 class="text-lg font-medium">
-                                            {entry.name}
-                                        </h4>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            class="h-8 w-8 text-destructive/70 hover:text-destructive -mr-2 -mt-1 z-10"
-                                            on:click={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(entry.id);
-                                            }}
-                                            aria-label="Delete entry"
+                                        {:else}
+                                            <div
+                                                class="image-error-placeholder flex items-center justify-center h-full w-full bg-muted"
+                                            >
+                                                <Image
+                                                    class="h-8 w-8 text-muted-foreground opacity-50"
+                                                />
+                                            </div>
+                                        {/if}
+                                    {:catch}
+                                        <div
+                                            class="image-error-placeholder flex items-center justify-center h-full w-full bg-muted"
                                         >
-                                            <Trash2 class="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                            <Image
+                                                class="h-8 w-8 text-muted-foreground opacity-50"
+                                            />
+                                        </div>
+                                    {/await}
+                                </div>
+                            {:else}
+                                <div
+                                    class="photo-image bg-muted flex items-center justify-center"
+                                >
+                                    <Tag
+                                        class="h-8 w-8 text-muted-foreground"
+                                    />
+                                </div>
+                            {/if}
 
-                                    <div
-                                        class="flex justify-between items-center"
+                            <!-- Hover overlay with info -->
+                            <div class="photo-overlay">
+                                <div class="photo-info">
+                                    <span
+                                        class="hidden md:block photo-title truncate"
+                                        >{entry.name}</span
                                     >
-                                        <Badge variant="outline"
-                                            >{entry.tag}</Badge
-                                        >
+                                    <div class="photo-meta">
                                         <span
-                                            class="text-xs text-muted-foreground"
+                                            class="hidden md:block photo-time flex items-center gap-1"
                                         >
                                             {formatTime(entry.date)}
+                                        </span>
+                                        <span class="photo-tag">
+                                            {formatTag(entry.tag)}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                        {/each}
-                    </div>
+                        </div>
+                    {/each}
                 </div>
             {/each}
         </div>
 
-        {#if $foodLogStore.hasMore}
-            <div bind:this={loadTriggerElement} class="py-4 mt-4 text-center">
-                {#if loadingMore}
+        <div
+            bind:this={loadTriggerElement}
+            class="py-4 mt-4 text-center"
+            id="scroll-trigger"
+        >
+            {#if loadingMore}
+                <div class="flex flex-col items-center justify-center py-3">
                     <div class="loader mx-auto"></div>
-                {/if}
-            </div>
-        {/if}
+                    <p class="text-sm text-muted-foreground mt-3">
+                        Loading more photos...
+                    </p>
+                </div>
+            {:else if reachedEnd || allEntriesLoaded || (!$foodLogStore.hasMore && hasTriedLoadingMore)}
+                <div
+                    class="end-of-content py-8 text-center border-t border-muted mt-2"
+                >
+                    <p class="text-muted-foreground">
+                        No more photos to display
+                    </p>
+                    <p class="text-xs text-muted-foreground/70 mt-1">
+                        You've reached the end of your food log
+                    </p>
+                </div>
+            {:else if hasMoreToLoad}
+                <!-- Invisible element for triggering infinite scroll -->
+                <div class="h-20"></div>
+                <Button variant="outline" class="mt-2" on:click={loadMore}>
+                    Load more photos
+                </Button>
+            {:else}
+                <!-- Fallback in case other conditions don't match -->
+                <div class="h-20"></div>
+                <Button variant="outline" class="mt-2" on:click={loadMore}>
+                    Check for more photos
+                </Button>
+            {/if}
+        </div>
     {:else}
         <div class="py-10 text-center">
             <p class="text-muted-foreground">
@@ -421,7 +529,6 @@
     {/if}
 </div>
 
-<!-- Details Modal -->
 <Dialog.Root bind:open={detailsOpen}>
     <Dialog.Content class="sm:max-w-[600px]">
         <Dialog.Header>
@@ -439,12 +546,41 @@
                     <div
                         class="image-container max-h-[400px] overflow-hidden rounded-md"
                     >
-                        {#await getImageUrl(selectedEntry) then url}
-                            <img
-                                src={url}
-                                alt={selectedEntry.name}
-                                class="w-full object-contain max-h-[400px]"
-                            />
+                        {#await getImageUrl(selectedEntry)}
+                            <div
+                                class="flex items-center justify-center h-48 bg-muted"
+                            >
+                                <div class="loader"></div>
+                            </div>
+                        {:then url}
+                            {#if url}
+                                <img
+                                    src={url}
+                                    alt={selectedEntry.name}
+                                    class="w-full object-contain max-h-[400px]"
+                                    on:error={(e) =>
+                                        handleImageError(
+                                            e,
+                                            selectedEntry?.id || "unknown",
+                                        )}
+                                />
+                            {:else}
+                                <div
+                                    class="flex items-center justify-center h-48 bg-muted"
+                                >
+                                    <Image
+                                        class="h-10 w-10 text-muted-foreground opacity-50"
+                                    />
+                                </div>
+                            {/if}
+                        {:catch}
+                            <div
+                                class="flex items-center justify-center h-48 bg-muted"
+                            >
+                                <Image
+                                    class="h-10 w-10 text-muted-foreground opacity-50"
+                                />
+                            </div>
                         {/await}
                     </div>
                 {/if}
@@ -484,7 +620,7 @@
                     variant="destructive"
                     on:click={() => {
                         if (selectedEntry) {
-                            handleDelete(selectedEntry.id);
+                            confirmDelete(selectedEntry);
                             detailsOpen = false;
                         }
                     }}
@@ -492,6 +628,41 @@
                     Delete
                 </Button>
             {/if}
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={confirmDeleteOpen}>
+    <Dialog.Content class="sm:max-w-[400px]">
+        <Dialog.Header>
+            <Dialog.Title>Confirm Deletion</Dialog.Title>
+            <Dialog.Description>
+                {#if entryToDelete}
+                    Are you sure you want to delete "{entryToDelete.name}"?
+                {:else}
+                    Are you sure you want to delete this entry?
+                {/if}
+                <p class="text-sm text-destructive mt-2">
+                    This action cannot be undone.
+                </p>
+            </Dialog.Description>
+        </Dialog.Header>
+
+        <Dialog.Footer>
+            <Button
+                variant="outline"
+                on:click={() => (confirmDeleteOpen = false)}>Cancel</Button
+            >
+            <Button
+                variant="destructive"
+                on:click={() => {
+                    if (entryToDelete) {
+                        handleDelete(entryToDelete.id);
+                    }
+                }}
+            >
+                Delete
+            </Button>
         </Dialog.Footer>
     </Dialog.Content>
 </Dialog.Root>
@@ -509,6 +680,133 @@
     @keyframes spin {
         to {
             transform: rotate(360deg);
+        }
+    }
+
+    .image-loading-placeholder,
+    .image-error-placeholder {
+        background-color: hsl(var(--muted));
+    }
+
+    .photos-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+        position: relative;
+    }
+
+    .date-marker {
+        flex: 0 0 100%;
+        margin-bottom: 8px;
+        margin-top: 16px;
+        width: 50px;
+    }
+
+    .date-marker:first-child {
+        margin-top: 0;
+    }
+
+    .date-header {
+        display: inline-flex;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .photo-item {
+        flex: 0 0 auto;
+        width: 180px;
+        height: 180px;
+    }
+
+    .photo-image {
+        width: 100%;
+        height: 100%;
+    }
+
+    .photos-section {
+        flex-wrap: wrap;
+        display: flex;
+    }
+
+    .photo-info {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .photo-title {
+        font-weight: 500;
+        font-size: 14px;
+        top: 50%;
+    }
+
+    .photo-meta {
+        display: flex;
+        gap: 6px;
+        font-size: 12px;
+        margin-top: 2px;
+        flex-wrap: wrap;
+    }
+
+    .photo-time {
+        opacity: 0.9;
+    }
+
+    .photo-tag {
+        font-size: 10px;
+        padding: 1px 6px;
+        background: rgba(255, 255, 255, 0.2);
+        right: 0;
+        position: absolute;
+        margin: 4px;
+        border: 0;
+        border-radius: 4px;
+        top: 50%;
+    }
+
+    .photo-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.7) 0%,
+            rgba(0, 0, 0, 0) 100%
+        );
+        padding: 16px 8px 8px;
+        color: white;
+        transition: opacity 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .end-of-content {
+        transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 640px) {
+        .photos-container {
+            gap: 4px;
+        }
+
+        .photo-item {
+            width: 100px;
+            height: 100px;
+        }
+
+        .photo-tag {
+            position: relative;
+            margin: 0;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .photo-item {
+            width: 100px;
+            height: 100px;
         }
     }
 </style>

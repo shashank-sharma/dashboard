@@ -18,7 +18,8 @@ import {
     ShieldCheck,
     ChevronDown,
     ChevronRight,
-    Utensils
+    Utensils,
+    KeyRound
 } from "lucide-svelte";
 
 export const DASHBOARD_SECTIONS: DashboardSection[] = [
@@ -44,7 +45,8 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
         children: [
             { id: "tokens", label: "Tokens", icon: KeySquare, path: "/dashboard/credentials/tokens" },
             { id: "developer", label: "Developer", icon: Terminal, path: "/dashboard/credentials/developer" },
-            { id: "api-keys", label: "API Keys", icon: Key, path: "/dashboard/credentials/api-keys" }
+            { id: "api-keys", label: "API Keys", icon: Key, path: "/dashboard/credentials/api-keys" },
+            { id: "security-keys", label: "Security Keys", icon: KeyRound, path: "/dashboard/credentials/security-keys" }
         ]
     }
 ];

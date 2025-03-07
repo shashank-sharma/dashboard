@@ -8,6 +8,7 @@ const initialState: CredentialsState = {
         totalTokens: 0,
         totalDeveloperTokens: 0,
         totalApiKeys: 0,
+        totalSecurityKeys: 0,
     },
     isLoading: false,
 };
@@ -25,6 +26,7 @@ function createCredentialsStore() {
                 const tokens = await pb.collection("tokens").getFullList({ fields: "id" });
                 const devTokens = await pb.collection("dev_tokens").getFullList({ fields: "id" });
                 const apiKeys = await pb.collection("api_keys").getFullList({ fields: "id" });
+                const securityKeys = await pb.collection("security_keys").getFullList({ fields: "id" });
 
                 // Update stats
                 update(state => ({
@@ -33,6 +35,7 @@ function createCredentialsStore() {
                         totalTokens: tokens.length,
                         totalDeveloperTokens: devTokens.length,
                         totalApiKeys: apiKeys.length,
+                        totalSecurityKeys: securityKeys.length,
                     },
                     isLoading: false,
                 }));
@@ -40,6 +43,15 @@ function createCredentialsStore() {
                 console.error("Failed to load credentials stats:", error);
                 update(state => ({ ...state, isLoading: false }));
             }
+        },
+        updateSecurityKeysCount: (count: number) => {
+            update(state => ({
+                ...state,
+                stats: {
+                    ...state.stats,
+                    totalSecurityKeys: count
+                }
+            }));
         },
         reset: () => set(initialState),
     };

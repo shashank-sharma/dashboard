@@ -5,7 +5,7 @@
 
     const statCards = [
         {
-            title: "Total Tasks",
+            title: "Total Tasks NEW",
             icon: ListTodo,
             getValue: (stats) => stats.totalTasks,
             color: "text-blue-500",

@@ -174,7 +174,7 @@
             <div
                 class="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x border-l"
             >
-                <ScrollArea class="w-64 sm:w-auto">
+                <ScrollArea class="w-64 sm:w-auto" orientation="both">
                     <div class="flex sm:flex-col p-2 gap-1">
                         {#each hours as hour}
                             <Button
@@ -190,7 +190,7 @@
                         {/each}
                     </div>
                 </ScrollArea>
-                <ScrollArea class="w-64 sm:w-auto">
+                <ScrollArea class="w-64 sm:w-auto" orientation="both">
                     <div class="flex sm:flex-col p-2 gap-1">
                         {#each minutes as minute}
                             <Button
@@ -212,3 +212,22 @@
         </div>
     </Popover.Content>
 </Popover.Root>
+
+<style>
+    /* Add some responsive styles to improve sizing within modals */
+    :global(.bits-ui-popover-content) {
+        max-height: 80vh !important;
+        max-width: 90vw !important;
+        overflow: auto !important;
+    }
+
+    @media (max-width: 640px) {
+        :global(.bits-ui-calendar) {
+            font-size: 0.875rem !important;
+        }
+
+        :global(.bits-ui-calendar-body) {
+            max-width: 100% !important;
+        }
+    }
+</style>

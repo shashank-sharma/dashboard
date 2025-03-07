@@ -44,9 +44,6 @@
     if (sessionDismissed === "true") {
       dismissed = true;
       debug.isDismissed = true;
-      console.log("[PWA] Banner previously dismissed in this session");
-    } else {
-      console.log("[PWA] Banner not previously dismissed");
     }
   };
 
@@ -56,21 +53,17 @@
     showManualInstructions = false;
     debug.isDismissed = true;
     sessionStorage.setItem("pwa-banner-dismissed", "true");
-    console.log("[PWA] Banner dismissed and saved to session storage");
   };
 
   const forceShow = () => {
     dismissed = false;
     debug.isDismissed = false;
     sessionStorage.removeItem("pwa-banner-dismissed");
-    console.log("[PWA] Force showing banner, dismissal status reset");
     updateShowState(true);
   };
 
   const handleInstall = async () => {
-    console.log("[PWA] Install button clicked");
     const outcome = await showInstallPrompt();
-    console.log("[PWA] Install prompt outcome:", outcome);
 
     if (outcome === "unavailable") {
       // If no prompt is available, show manual instructions
@@ -110,21 +103,13 @@
 
     if (isInstalled) {
       show = false;
-      console.log("[PWA] App is installed, hiding banner");
       return;
     }
 
     if (force) {
       show = true;
-      console.log("[PWA] Showing banner (forced)");
     } else {
       show = (installable || $devControls.showInstallPrompt) && !dismissed;
-      console.log("[PWA] Banner visibility:", show, {
-        installable,
-        devShowPrompt: $devControls.showInstallPrompt,
-        isInstalled,
-        dismissed,
-      });
     }
   }
 
@@ -145,22 +130,14 @@
     checkDismissed();
     detectBrowser();
 
-    console.log("[PWA] Checking installation criteria...");
-
-    if (isDebugMode) {
-      console.log("[PWA-DEV] Debug mode detected");
-    }
-
     const unsubscribePrompt = installPrompt.subscribe((value) => {
       installable = !!value;
       debug.hasPrompt = installable;
-      console.log("[PWA] Install prompt available:", installable);
       updateShowState();
     });
 
     const unsubscribeInstalled = isPwaInstalled.subscribe((value) => {
       debug.isInstalled = value;
-      console.log("[PWA] Is installed:", value);
       updateShowState();
     });
 
@@ -168,27 +145,16 @@
       if (value) {
         unavailabilityReason = value;
         debug.reason = value;
-        console.log("[PWA] Prompt unavailable reason:", value);
       }
     });
 
     const unsubscribeDev = devControls.subscribe((devState) => {
-      if (isDebugMode) {
-        console.log("[PWA-DEV] Dev controls state:", devState);
-      }
       updateShowState();
     });
 
     window.addEventListener("storage", handleStorageEvent);
 
-    if (isDebugMode && !installable) {
-      console.log(
-        "[PWA-DEV] No install prompt available. Try using PwaDebugTools to trigger manually.",
-      );
-    }
-
     if (browser && window.location.search.includes("showPwaInstall=true")) {
-      console.log("[PWA] Detected showPwaInstall parameter in URL");
       forceShow();
     }
 
@@ -357,7 +323,7 @@
 
 <!-- Debug UI - only visible in debug mode -->
 {#if isDebugMode}
-  <div class="fixed bottom-4 right-4 z-50">
+  <div class="fixed bottom-20 right-4 z-50">
     <Button variant="outline" size="sm" on:click={forceShow}>
       Test PWA Banner
     </Button>
