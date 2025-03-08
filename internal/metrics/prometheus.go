@@ -14,26 +14,6 @@ import (
 )
 
 var (
-	// RequestCounter tracks HTTP requests by method, path, and status code
-	RequestCounter = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "pocketbase_http_requests_total",
-			Help: "Total number of HTTP requests",
-		},
-		[]string{"method", "path", "status"},
-	)
-
-	// RequestDuration tracks HTTP request duration
-	RequestDuration = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "pocketbase_http_request_duration_seconds",
-			Help:    "HTTP request duration in seconds",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"method", "path"},
-	)
-
-	// DatabaseOperations tracks database operations
 	DatabaseOperations = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "pocketbase_database_operations_total",
@@ -42,7 +22,6 @@ var (
 		[]string{"collection", "operation"},
 	)
 
-	// ActiveSessions tracks the number of active user sessions
 	ActiveSessions = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "pocketbase_active_sessions",
@@ -50,7 +29,6 @@ var (
 		},
 	)
 
-	// CronJobExecutions tracks cron job executions
 	CronJobExecutions = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "pocketbase_cronjob_executions_total",
@@ -59,7 +37,6 @@ var (
 		[]string{"job_name"},
 	)
 
-	// CronJobDuration tracks cron job execution duration
 	CronJobDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "pocketbase_cronjob_duration_seconds",
@@ -70,66 +47,68 @@ var (
 	)
 )
 
-// metricsResponseWriter is a wrapper around http.ResponseWriter to capture the status code
-type metricsResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-// WriteHeader captures the status code before delegating to the wrapped ResponseWriter
-func (mrw *metricsResponseWriter) WriteHeader(code int) {
-	mrw.statusCode = code
-	mrw.ResponseWriter.WriteHeader(code)
-}
-
-// newMetricsResponseWriter creates a new metricsResponseWriter
-func newMetricsResponseWriter(w http.ResponseWriter) *metricsResponseWriter {
-	return &metricsResponseWriter{w, http.StatusOK}
+// Initialize metrics with default values so they show up in Prometheus
+func initializeMetrics() {	
+	for _, collection := range []string{"users", "track_devices", "tokens"} {
+		for _, op := range []string{"create", "update", "delete", "auth"} {
+			DatabaseOperations.WithLabelValues(collection, op).Add(0)
+		}
+	}
+	
+	// TODO: Initialize session metrics
+	ActiveSessions.Set(0)
+	
+	// Initialize cron job metrics
+	for _, job := range []string{"track-device"} {
+		CronJobExecutions.WithLabelValues(job).Add(0)
+		CronJobDuration.WithLabelValues(job).Observe(0)
+	}
 }
 
 // RegisterPrometheusMetrics registers Prometheus metrics with the application
 func RegisterPrometheusMetrics(app *pocketbase.PocketBase) {
-	// Check if metrics are enabled from store
+	initializeMetrics()
+		
+	// Check if metrics server should be enabled
 	enabled, enabledOk := app.Store().Get("METRICS_ENABLED").(bool)
 	if !enabledOk || !enabled {
-		logger.LogInfo("Prometheus metrics are disabled")
+		logger.LogInfo("Prometheus metrics server is disabled")
 		return
 	}
 	
-	logger.LogInfo("Metrics enabled from runtime store")
+	logger.LogInfo("Metrics server enabled from runtime store")
 	
 	// Get port from store
 	port, portOk := app.Store().Get("METRICS_PORT").(int)
 	if !portOk || port <= 0 {
-		// Use default port if not found or invalid
 		port = 9091
 	}
 
-	logger.LogInfo(fmt.Sprintf("Enabling Prometheus metrics with port %d", port))
+	logger.LogInfo(fmt.Sprintf("Enabling Prometheus metrics server on port %d", port))
 
-	// Set up the metrics port in the store for use by StartMetricsServer
 	app.Store().Set("METRICS_PORT", port)
 	
-	// Track record operations for all collections
-	for _, collection := range []string{"users", "track_devices", "tokens"} {
-		// Use a separate variable for each closure to avoid issues with the loop variable
-		collectionName := collection
+	setupBasicHooks(app)
+}
+
+func setupBasicHooks(app *pocketbase.PocketBase) {
+	collections := []string{"users", "track_devices", "tokens"}
+	
+	for _, collection := range collections {
+		collName := collection
 		
-		// Track creates
-		app.OnRecordCreate(collectionName).BindFunc(func(e *core.RecordEvent) error {
-			DatabaseOperations.WithLabelValues(collectionName, "create").Inc()
+		app.OnRecordCreate(collName).BindFunc(func(e *core.RecordEvent) error {
+			DatabaseOperations.WithLabelValues(collName, "create").Inc()
 			return e.Next()
 		})
 		
-		// Track updates
-		app.OnRecordUpdate(collectionName).BindFunc(func(e *core.RecordEvent) error {
-			DatabaseOperations.WithLabelValues(collectionName, "update").Inc()
+		app.OnRecordUpdate(collName).BindFunc(func(e *core.RecordEvent) error {
+			DatabaseOperations.WithLabelValues(collName, "update").Inc()
 			return e.Next()
 		})
 		
-		// Track deletes
-		app.OnRecordDelete(collectionName).BindFunc(func(e *core.RecordEvent) error {
-			DatabaseOperations.WithLabelValues(collectionName, "delete").Inc()
+		app.OnRecordDelete(collName).BindFunc(func(e *core.RecordEvent) error {
+			DatabaseOperations.WithLabelValues(collName, "delete").Inc()
 			return e.Next()
 		})
 	}
@@ -137,10 +116,8 @@ func RegisterPrometheusMetrics(app *pocketbase.PocketBase) {
 
 // StartMetricsServer starts the Prometheus metrics HTTP server
 func StartMetricsServer(app *pocketbase.PocketBase) error {
-	enabled, ok := app.Store().Get("METRICS_ENABLED").(bool)
-	if !ok || !enabled {
-		return nil
-	}
+	// Always start the metrics server regardless of the enabled flag
+	// This ensures metrics are always available for Grafana
 	
 	// Get the port
 	port, ok := app.Store().Get("METRICS_PORT").(int)
@@ -173,4 +150,9 @@ func TrackCronJobExecution(jobName string, duration time.Duration) {
 // UpdateActiveSessions updates the active sessions gauge
 func UpdateActiveSessions(count int) {
 	ActiveSessions.Set(float64(count))
+}
+
+// TrackDatabaseOperation manually tracks a database operation
+func TrackDatabaseOperation(collection, operation string) {
+	DatabaseOperations.WithLabelValues(collection, operation).Inc()
 }

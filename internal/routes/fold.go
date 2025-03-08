@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -24,17 +25,18 @@ type FoldVerifyOtpAPI struct {
 	Otp         string `json:"otp"`
 }
 
-func RegisterFoldRoutes(e *core.ServeEvent, foldService *fold.FoldService) {
-	e.Router.POST("/api/fold/getotp", func(e *core.RequestEvent) error {
+func RegisterFoldRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string, foldService *fold.FoldService) {
+	foldRouter := apiRouter.Group(path)
+	foldRouter.POST("/getotp", func(e *core.RequestEvent) error {
 		return FoldGetOtpHandler(foldService, e)
 	})
-	e.Router.POST("/api/fold/verifyotp", func(e *core.RequestEvent) error {
+	foldRouter.POST("/verifyotp", func(e *core.RequestEvent) error {
 		return FoldVerifyOtpHandler(foldService, e)
 	})
-	e.Router.GET("/api/fold/refresh", func(e *core.RequestEvent) error {
+	foldRouter.GET("/refresh", func(e *core.RequestEvent) error {
 		return FoldRefreshTokenHandler(foldService, e)
 	})
-	e.Router.GET("/api/fold/user", func(e *core.RequestEvent) error {
+	foldRouter.GET("/user", func(e *core.RequestEvent) error {
 		return FoldUserHandler(foldService, e)
 	})
 }

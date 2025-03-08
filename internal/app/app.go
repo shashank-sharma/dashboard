@@ -13,6 +13,7 @@ import (
 	"github.com/shashank-sharma/backend/internal/gui"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/metrics"
+	"github.com/shashank-sharma/backend/internal/middleware"
 	"github.com/shashank-sharma/backend/internal/routes"
 	"github.com/shashank-sharma/backend/internal/services"
 	"github.com/shashank-sharma/backend/internal/services/ai"
@@ -116,14 +117,18 @@ func (app *Application) initializeServices() {
 }
 
 func (app *Application) configureRoutes(e *core.ServeEvent) {
-	routes.RegisterWorkflowRoutes(e, app.WorkflowEngine)
-	routes.RegisterFeedRoutes(e, *app.FeedService)
+	apiRouter := e.Router.Group("/api")
+	apiRouter.BindFunc(middleware.RouteMetricsMiddleware)
+
+	routes.RegisterWorkflowRoutes(apiRouter, "/workflows", app.WorkflowEngine)
+	routes.RegisterFeedRoutes(apiRouter, "/feeds", *app.FeedService)
 	routes.RegisterCredentialRoutes(e)
-	routes.RegisterTrackRoutes(e)
-	routes.RegisterCalendarRoutes(e, app.CalendarService)
-	routes.RegisterMailRoutes(e, app.MailService)
-	routes.RegisterFoldRoutes(e, app.FoldService)
-	routes.RegisterSSHRoutes(e)
+
+	routes.RegisterTrackRoutes(apiRouter, "/track")
+	routes.RegisterCalendarRoutes(apiRouter, "/calendar", app.CalendarService)
+	routes.RegisterMailRoutes(apiRouter, "/mail", app.MailService)
+	routes.RegisterFoldRoutes(apiRouter, "/fold", app.FoldService)
+	routes.RegisterSSHRoutes(apiRouter, "/ssh")
 	
 	logger.LogInfo("All routes registered successfully")
 }
@@ -144,7 +149,7 @@ func (app *Application) InitCronjobs() error {
 	return nil
 }
 
-func (app *Application) Start() error {
+func (app *Application) Start(httpAddr string) error {
 	// Check if GUI flag is set
 	withGUI, ok := app.Pb.Store().Get("WITH_GUI").(bool)
 	fileLogging, okLogging := app.Pb.Store().Get("FILE_LOGGING_ENABLED").(bool)
@@ -155,7 +160,7 @@ func (app *Application) Start() error {
 		// Start the server in a goroutine
 		go func() {
 			app.Pb.Bootstrap()
-			err := app.Serve()
+			err := app.Serve(httpAddr)
 
 			if err != nil {
 				logger.LogInfo("Server closed error: " + err.Error())
@@ -175,7 +180,7 @@ func (app *Application) Start() error {
 	}
 	
 	// Default behavior (no GUI)
-	return app.Serve()
+	return app.Serve(httpAddr)
 }
 
 // collectServerMetadata gathers information about the server for display in the GUI
@@ -218,11 +223,11 @@ func (app *Application) collectServerMetadata() gui.ServerMetadata {
 	// Create the metadata struct
 	metadata := gui.ServerMetadata{
 		ServerURL:      serverURL,
-		ServerVersion:  "v1.0.0", // You can retrieve this from a version package if available
+		ServerVersion:  "v1.0.0",
 		Environment:    environment,
 		EnvVariables:   envVars,
 		CronJobs:       cronJobs,
-		StartTime:      time.Now(), // This should ideally be the actual server start time
+		StartTime:      time.Now(),
 		DataDirectory:  "./pb_data",
 		APIEndpoints:   endpoints,
 	}
@@ -230,10 +235,12 @@ func (app *Application) collectServerMetadata() gui.ServerMetadata {
 	return metadata
 }
 
-func (app *Application) Serve() error {
+func (app *Application) Serve(httpAddr string) error {
 	app.Pb.Bootstrap()
+
+	logger.LogInfo("Starting server on " + httpAddr)
 	err := apis.Serve(app.Pb, apis.ServeConfig{
-		HttpAddr:           "0.0.0.0:8090",
+		HttpAddr:           httpAddr,
 		ShowStartBanner:    false,
 	})
 

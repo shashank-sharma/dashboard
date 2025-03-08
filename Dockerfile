@@ -28,18 +28,18 @@ RUN go mod download
 # Build /app/bin
 COPY . .
 
-RUN go build -ldflags="-s -w" -o bin -v ./cmd/dashboard/main.go
+RUN go build -ldflags="-s -w" -o nenspace -v ./cmd/dashboard/main.go
 
 # Serve the binary with pb_public
-FROM alpine:latest as bin
+FROM alpine:latest as nenspace
 
 RUN apk update && apk add --no-cache \
         ca-certificates
 
 WORKDIR /app/
 COPY pb_public ./pb_public
-COPY --from=builder /app/bin .
+COPY --from=builder /app/nenspace .
 
 EXPOSE 8080
 
-CMD ["/app/bin", "serve", "--http=0.0.0.0:8090"]
+CMD ["/app/nenspace", "serve", "-http-addr=0.0.0.0:8090", "-metrics"]

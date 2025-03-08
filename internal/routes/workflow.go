@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/shashank-sharma/backend/internal/logger"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
 	"github.com/shashank-sharma/backend/internal/services/workflow"
@@ -15,8 +15,8 @@ import (
 )
 
 // RegisterWorkflowRoutes registers the workflow-related API endpoints
-func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine) {
-	logger.LogInfo("Registering workflow routes")
+func RegisterWorkflowRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string, engine *workflow.WorkflowEngine) {
+	workflowRouter := apiRouter.Group(path)
 	// Create a new registry
 	connRegistry := workflow.NewConnectorRegistryImpl()
 	
@@ -25,7 +25,7 @@ func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine)
 	workflow.RegisterLocalConnectors(connRegistry)
 	
 	// Get available connectors
-	e.Router.GET("/api/workflows/connectors", func(e *core.RequestEvent) error {
+	workflowRouter.GET("/connectors", func(e *core.RequestEvent) error {
 		// Get connector IDs
 		connectorIDs := connRegistry.GetAvailableConnectors()
 		
@@ -49,7 +49,7 @@ func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine)
 		})
 	})
 
-	e.Router.POST("/api/workflows/{id}/execute", func(e *core.RequestEvent) error {
+	workflowRouter.POST("/{id}/execute", func(e *core.RequestEvent) error {
 		workflowId := e.Request.PathValue("id")
 		if workflowId == "" {
 			return e.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -87,7 +87,7 @@ func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine)
 	})
 
 	// Get execution status
-	e.Router.GET("/api/workflows/executions/{id}", func(e *core.RequestEvent) error {
+	workflowRouter.GET("/executions/{id}", func(e *core.RequestEvent) error {
 		executionId := e.Request.PathValue("id")
 		if executionId == "" {
 			return e.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -135,7 +135,7 @@ func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine)
 	})
 
 	// Register webhook triggers for workflows
-	e.Router.POST("/api/workflows/{id}/webhook", func(e *core.RequestEvent) error {
+	workflowRouter.POST("/{id}/webhook", func(e *core.RequestEvent) error {
 		workflowId := e.Request.PathValue("id")
 		if workflowId == "" {
 			return e.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -184,5 +184,3 @@ func RegisterWorkflowRoutes(e *core.ServeEvent, engine *workflow.WorkflowEngine)
 		return e.JSON(http.StatusAccepted, execution)
 	})
 }
-
-// The helper function is no longer needed as it's been moved to the workflow package 

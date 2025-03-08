@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
@@ -20,21 +21,22 @@ type MailAuthData struct {
 	Provider string `json:"provider"`
 }
 
-func RegisterMailRoutes(e *core.ServeEvent, mailService *mail.MailService) {
+func RegisterMailRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string, mailService *mail.MailService) {
 	// Mail
-	e.Router.GET("/auth/mail/redirect", func(e *core.RequestEvent) error {
+	mailRouter := apiRouter.Group(path)
+	mailRouter.GET("/auth/redirect", func(e *core.RequestEvent) error {
 		return MailAuthHandler(mailService, e)
 	})
 
-	e.Router.POST("/api/mail/auth/callback", func(e *core.RequestEvent) error {
+	mailRouter.POST("/auth/callback", func(e *core.RequestEvent) error {
 		return MailAuthCallback(mailService, e)
 	})
 
-	e.Router.POST("/api/mail/sync", func(e *core.RequestEvent) error {
+	mailRouter.POST("/sync", func(e *core.RequestEvent) error {
 		return MailSyncHandler(mailService, e)
 	})
 
-	e.Router.GET("/api/mail/sync/status", func(e *core.RequestEvent) error {
+	mailRouter.GET("/sync/status", func(e *core.RequestEvent) error {
 		return MailSyncStatusHandler(mailService, e)
 	})
 }

@@ -17,6 +17,7 @@ type ConfigFlags struct {
 	FileLogging bool
 	WithGui     bool
 	Dev         bool
+	HttpAddr    string
 }
 
 func getEnv(key string, defaultValue string) string {
@@ -40,7 +41,8 @@ func Init(pb *pocketbase.PocketBase, config ConfigFlags) {
 	pb.Store().Set("LOG_FILE_PATH", getEnv("LOG_FILE_PATH", "logs/app.log"))
 	pb.Store().Set("WITH_GUI", config.WithGui)
 	pb.Store().Set("DEV", config.Dev)
-	
+	pb.Store().Set("HTTP_ADDR", config.HttpAddr)
+
 	// Set global flags for easy access
 	EnableMetricsFlag = config.Metrics
 	FileLoggingFlag = config.FileLogging

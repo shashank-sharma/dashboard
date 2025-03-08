@@ -7,6 +7,7 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
@@ -71,12 +72,13 @@ type TrackFocusAPI struct {
 }
 
 
-func RegisterTrackRoutes(e *core.ServeEvent) {
-	e.Router.POST("/api/track/create", TrackCreateAppItems)
-	e.Router.POST("/api/track", TrackDeviceStatus)
-	e.Router.GET("/api/track/getapp", GetCurrentApp)
-	e.Router.POST("/api/focus/create", TrackFocus)
-	e.Router.POST("/api/sync/create", TrackAppSyncItems)
+func RegisterTrackRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string) {
+	trackRouter := apiRouter.Group(path)
+	trackRouter.POST("/create", TrackCreateAppItems)
+	trackRouter.POST("/", TrackDeviceStatus)
+	trackRouter.GET("/getapp", GetCurrentApp)
+	apiRouter.POST("/focus/create", TrackFocus)
+	apiRouter.POST("/sync/create", TrackAppSyncItems)
 	// e.Router.POST("/sync/track-items", routes.TrackAppItems)
 }
 

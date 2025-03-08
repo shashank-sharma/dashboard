@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -71,16 +72,17 @@ func generateConnectionID() string {
 
 var connectionManager *SSHConnectionManager
 
-func RegisterSSHRoutes(e *core.ServeEvent) {
+func RegisterSSHRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string) {
+	sshRouter := apiRouter.Group(path)
 	if connectionManager == nil {
 		connectionManager = NewSSHConnectionManager()
 	}
 
-	RegisterKeyGenerationRoute(e)
-	RegisterSSHWebSocketRoutes(e)
+	RegisterKeyGenerationRoute(sshRouter, "/security-keys")
+	RegisterSSHWebSocketRoutes(sshRouter)
 
 	// Register route to connect to a server
-	e.Router.POST("/api/servers/connect", func(c *core.RequestEvent) error {
+	sshRouter.POST("/connect", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		
 		tokenPrefix := ""
@@ -191,7 +193,7 @@ func RegisterSSHRoutes(e *core.ServeEvent) {
 		})
 	})
 
-	e.Router.POST("/api/ssh/execute", func(c *core.RequestEvent) error {
+	sshRouter.POST("/execute", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		userID, err := getUserIDFromToken(token)
 		if err != nil {
@@ -368,7 +370,7 @@ func RegisterSSHRoutes(e *core.ServeEvent) {
 	})
 
 	// Register route to disconnect from a server
-	e.Router.POST("/api/ssh/disconnect", func(c *core.RequestEvent) error {
+	sshRouter.POST("/disconnect", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		userID, err := getUserIDFromToken(token)
 		if err != nil {
@@ -420,7 +422,7 @@ func RegisterSSHRoutes(e *core.ServeEvent) {
 	// Register route for keep-alive pings
 	// This endpoint handles both HTTP pings from the frontend and serves as a fallback 
 	// for WebSocket ping messages when WebSockets aren't available
-	e.Router.POST("/api/ssh/ping", func(c *core.RequestEvent) error {
+	sshRouter.POST("/ping", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		userID, err := getUserIDFromToken(token)
 		if err != nil {
@@ -465,7 +467,7 @@ func RegisterSSHRoutes(e *core.ServeEvent) {
 
 	// Register route for terminal resize events
 	// This is the centralized endpoint for terminal resize operations
-	e.Router.POST("/api/ssh/resize", func(c *core.RequestEvent) error {
+	sshRouter.POST("/resize", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		userID, err := getUserIDFromToken(token)
 		if err != nil {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/models"
@@ -75,14 +76,15 @@ type TagResponse struct {
 }
 
 // RegisterFeedRoutes registers feed-related API routes
-func RegisterFeedRoutes(e *core.ServeEvent, feedService services.FeedService) {
-	e.Router.POST("/api/feeds/sources", func(e *core.RequestEvent) error {
+func RegisterFeedRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string, feedService services.FeedService) {
+	feedRouter := apiRouter.Group(path)
+	feedRouter.POST("/sources", func(e *core.RequestEvent) error {
 		return CreateFeedSource(e, feedService)
 	})
-	e.Router.POST("/api/feeds/sources/{id}/fetch", func(e *core.RequestEvent) error {
+	feedRouter.POST("/sources/{id}/fetch", func(e *core.RequestEvent) error {
 		return FetchFromSource(e, feedService)
 	})
-	e.Router.GET("/api/feeds", func(e *core.RequestEvent) error {
+	feedRouter.GET("/", func(e *core.RequestEvent) error {
 		return GetFeeds(e, feedService)
 	})
 }

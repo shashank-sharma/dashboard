@@ -14,13 +14,15 @@ import (
 	"strings"
 
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/util"
 	"golang.org/x/crypto/ssh"
 )
 
-func RegisterKeyGenerationRoute(e *core.ServeEvent) {
-	e.Router.POST("/api/security-keys/generate", func(c *core.RequestEvent) error {
+func RegisterKeyGenerationRoute(apiRouter *router.RouterGroup[*core.RequestEvent], path string) {
+	sshGroup := apiRouter.Group(path)
+	sshGroup.POST("/generate", func(c *core.RequestEvent) error {
 		token := c.Request.Header.Get("Authorization")
 		userID, err := util.GetUserId(token)
 		if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/shashank-sharma/backend/internal/logger"
 	"github.com/shashank-sharma/backend/internal/util"
 	"golang.org/x/crypto/ssh"
@@ -62,8 +63,8 @@ var sshOutputListeners = struct {
 	listeners: make(map[string][]*SSHOutputListener),
 }
 
-func RegisterSSHWebSocketRoutes(e *core.ServeEvent) {
-	e.Router.GET("/api/ssh/stream", func(c *core.RequestEvent) error {
+func RegisterSSHWebSocketRoutes(sshRouter *router.RouterGroup[*core.RequestEvent]) {
+	sshRouter.GET("/stream", func(c *core.RequestEvent) error {
 		logger.LogInfo("WebSocket connection request received", "host", c.Request.Host, "uri", c.Request.RequestURI)
 		
 		// Parse the connection ID from query parameters first for better error messages

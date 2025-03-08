@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/shashank-sharma/backend/internal/models"
 	"github.com/shashank-sharma/backend/internal/query"
@@ -19,16 +20,17 @@ type CalendarTokenAPI struct {
 	Provider string `json:"provider"`
 }
 
-func RegisterCalendarRoutes(e *core.ServeEvent, calendarService *calendar.CalendarService) {
-		e.Router.GET("/auth/calendar/redirect", func(e *core.RequestEvent) error {
-			return CalendarAuthHandler(calendarService, e)
-		})
-		e.Router.POST("/auth/calendar/callback", func(e *core.RequestEvent) error {
-			return CalendarAuthCallback(calendarService, e)
-		})
-		e.Router.POST("/api/calendar/sync", func(e *core.RequestEvent) error {
-			return CalendarSyncHandler(calendarService, e)
-		})
+func RegisterCalendarRoutes(apiRouter *router.RouterGroup[*core.RequestEvent], path string, calendarService *calendar.CalendarService) {
+	calendarRouter := apiRouter.Group(path)
+	calendarRouter.GET("/auth/redirect", func(e *core.RequestEvent) error {
+		return CalendarAuthHandler(calendarService, e)
+	})
+	calendarRouter.POST("/auth/callback", func(e *core.RequestEvent) error {
+		return CalendarAuthCallback(calendarService, e)
+	})
+	calendarRouter.POST("/sync", func(e *core.RequestEvent) error {
+		return CalendarSyncHandler(calendarService, e)
+	})
 }
 
 func CalendarAuthHandler(cs *calendar.CalendarService, e *core.RequestEvent) error {
